@@ -339,15 +339,17 @@ jobs:
           tool: cargo-fuzz
 
       - name: Fuzz shard ${{ matrix.shard }}/5
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
-          mapfile -t ALL < <(ls fuzz/fuzz_targets/*.rs | xargs -n1 basename | sed 's/\.rs$//')
+          mapfile -t ALL < <(find fuzz/fuzz_targets -maxdepth 1 -name '*.rs' -printf '%f\n' | sort | sed 's/\.rs$//')
           MINE=()
           i=0
           for t in "${ALL[@]}"; do
-            if [ $((i % 5)) -eq ${{ matrix.shard }} ]; then MINE+=("$t"); fi
+            if [ "$((i % 5))" -eq "$SHARD" ]; then MINE+=("$t"); fi
             i=$((i + 1))
           done
-          echo "shard ${{ matrix.shard }}: ${#MINE[@]} targets"
+          echo "shard ${SHARD}: ${#MINE[@]} targets"
           bash scripts/quality/25_fuzz_campaign.sh 180 "${MINE[@]}"
 
       - uses: actions/upload-artifact@v4

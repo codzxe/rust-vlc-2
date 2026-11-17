@@ -345,9 +345,15 @@ fn drive(row: Row) -> Vec<Check> {
                 matches!(&open.result, Ok(CommandOutcome::Accepted { .. })),
                 "the open refused",
             ));
+            // The terminal state, not the settle-time snapshot: the w2x
+            // open-phase decode-ahead retune pre-rolls fewer frames, so
+            // a late-tail truncation (trunc4's single missing byte) is
+            // now discovered during the play-out instead of during the
+            // settle — the run still lands in Error with the same typed
+            // fatal, one pump window later.
             checks.push(Check::same(
-                &format!("{what}: the settle lands in Error"),
-                &format!("{settled:?}"),
+                &format!("{what}: the run lands in Error"),
+                &format!("{end_state:?}"),
                 "Error",
             ));
             checks.push(Check::int(
