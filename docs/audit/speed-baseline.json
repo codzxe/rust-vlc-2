@@ -1,0 +1,391 @@
+{
+ "generated": "2026-11-17T19:51:24Z",
+ "convention": "ratio = ffmpeg_time / lumen_time; 1.0 = parity",
+ "classes": {
+  "tests/fixtures :: wav-audio": {
+   "ratio": 14.651111717239035,
+   "n": 2,
+   "ff_med_s": 0.04213891950000459,
+   "lumen_med_s": 0.0028761585000012246,
+   "ff_n": 2
+  },
+  "tests/fixtures :: mov-audio": {
+   "ratio": 15.013583252154266,
+   "n": 5,
+   "ff_med_s": 0.04362402300000667,
+   "lumen_med_s": 0.002905636999997796,
+   "ff_n": 5
+  },
+  "tests/fixtures :: ivf-video": {
+   "ratio": 16.341962961868813,
+   "n": 5,
+   "ff_med_s": 0.046377445000018724,
+   "lumen_med_s": 0.002837935999991714,
+   "ff_n": 5
+  },
+  "tests/fixtures :: mp3-audio": {
+   "ratio": 13.136863015605245,
+   "n": 1,
+   "ff_med_s": 0.04610672399999771,
+   "lumen_med_s": 0.0035097210000003543,
+   "ff_n": 1
+  },
+  "tests/fixtures :: aac-audio": {
+   "ratio": 15.059279647968689,
+   "n": 1,
+   "ff_med_s": 0.04558558400000834,
+   "lumen_med_s": 0.0030270760000234986,
+   "ff_n": 1
+  },
+  "tests/fixtures :: mov-video": {
+   "ratio": 19.112293282097372,
+   "n": 6,
+   "ff_med_s": 0.057316907499995295,
+   "lumen_med_s": 0.0029989550000095733,
+   "ff_n": 6
+  },
+  "fixtures/alac :: mov-audio": {
+   "ratio": 15.335252965849598,
+   "n": 5,
+   "ff_med_s": 0.046009239999989404,
+   "lumen_med_s": 0.003000227000001132,
+   "ff_n": 5
+  },
+  "fixtures/av1 :: ivf-video": {
+   "ratio": 16.119550931252196,
+   "n": 5,
+   "ff_med_s": 0.04772091500001352,
+   "lumen_med_s": 0.002960436999984495,
+   "ff_n": 5
+  },
+  "fixtures/h264 :: mov-video": {
+   "ratio": 19.502600143546218,
+   "n": 6,
+   "ff_med_s": 0.05786139650001587,
+   "lumen_med_s": 0.0029668554999915386,
+   "ff_n": 6
+  },
+  "fixtures/mpeg12 :: ts-video": {
+   "ratio": 14.864498180270633,
+   "n": 1,
+   "ff_med_s": 0.04612627700001326,
+   "lumen_med_s": 0.0031031170000233033,
+   "ff_n": 1
+  },
+  "fixtures/vp9 :: ivf-video": {
+   "ratio": 23.263324925748776,
+   "n": 6,
+   "ff_med_s": 0.06777216049999879,
+   "lumen_med_s": 0.0029132620000069664,
+   "ff_n": 6
+  },
+  "hls/fmp4 :: mov-audio": {
+   "ratio": 15.312581306646727,
+   "n": 1,
+   "ff_med_s": 0.043151436000016474,
+   "lumen_med_s": 0.0028180379999867,
+   "ff_n": 1
+  },
+  "hls/single_file :: ts-audio": {
+   "ratio": 15.465708928446581,
+   "n": 1,
+   "ff_med_s": 0.047089108999983864,
+   "lumen_med_s": 0.003044743000003791,
+   "ff_n": 1
+  },
+  "hls/ts_vod :: ts-audio": {
+   "ratio": 15.746520041530163,
+   "n": 9,
+   "ff_med_s": 0.0464052779999804,
+   "lumen_med_s": 0.002947018000014623,
+   "ff_n": 9
+  },
+  "probe-work/dir :: wav-audio": {
+   "ratio": 15.008097485693803,
+   "n": 1,
+   "ff_med_s": 0.0439169500000105,
+   "lumen_med_s": 0.0029262169999810794,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_aac :: aac-audio": {
+   "ratio": 13.000180273465007,
+   "n": 3,
+   "ff_med_s": 0.04773926199999323,
+   "lumen_med_s": 0.003672199999982695,
+   "ff_n": 3
+  },
+  "corpus/fuzz_codec_alac :: mov-audio": {
+   "ratio": 15.105989897368111,
+   "n": 2,
+   "ff_med_s": 0.04379879049999147,
+   "lumen_med_s": 0.00289943199999243,
+   "ff_n": 2
+  },
+  "corpus/fuzz_codec_av1 :: ivf-video": {
+   "ratio": 16.61789798034483,
+   "n": 1,
+   "ff_med_s": 0.047578603999994584,
+   "lumen_med_s": 0.0028630939999914062,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_h264 :: mkv-video": {
+   "ratio": 16.276879422562175,
+   "n": 1,
+   "ff_med_s": 0.052366594999995186,
+   "lumen_med_s": 0.0032172380000190515,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_h264 :: mov-video": {
+   "ratio": 17.657263471309268,
+   "n": 1,
+   "ff_med_s": 0.05159364100001085,
+   "lumen_med_s": 0.002921950000001061,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_hevc :: mkv-video": {
+   "ratio": 15.419836578426809,
+   "n": 1,
+   "ff_med_s": 0.05041259600000103,
+   "lumen_med_s": 0.0032693339999809723,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_hevc :: mov-video": {
+   "ratio": 18.12132042226441,
+   "n": 1,
+   "ff_med_s": 0.05353851699999268,
+   "lumen_med_s": 0.0029544489999864254,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_mjpeg :: avi-video": {
+   "ratio": 12.094235649796454,
+   "n": 1,
+   "ff_med_s": 0.04270743099999663,
+   "lumen_med_s": 0.0035312220000207617,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_mp2 :: mp3-audio": {
+   "ratio": 13.715420259379464,
+   "n": 1,
+   "ff_med_s": 0.043578813999999966,
+   "lumen_med_s": 0.0031773590000057084,
+   "ff_n": 1
+  },
+  "corpus/fuzz_codec_mp3 :: mp3-audio": {
+   "ratio": 13.81216410693296,
+   "n": 3,
+   "ff_med_s": 0.04454145299999368,
+   "lumen_med_s": 0.0032247990000087157,
+   "ff_n": 3
+  },
+  "corpus/fuzz_codec_vorbis :: ogg-audio": {
+   "ratio": 14.749139885805628,
+   "n": 2,
+   "ff_med_s": 0.04290615499999717,
+   "lumen_med_s": 0.002909061500005805,
+   "ff_n": 2
+  },
+  "corpus/fuzz_demux_adts :: aac-audio": {
+   "ratio": 13.641145162715047,
+   "n": 2,
+   "ff_med_s": 0.045269060999999056,
+   "lumen_med_s": 0.0033185675000169113,
+   "ff_n": 2
+  },
+  "corpus/fuzz_demux_aiff :: aiff-audio": {
+   "ratio": 14.558563762555146,
+   "n": 1,
+   "ff_med_s": 0.04254290400001537,
+   "lumen_med_s": 0.0029221910000103435,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_avi :: avi-video": {
+   "ratio": 9.205537335998205,
+   "n": 1,
+   "ff_med_s": 0.0430787019999741,
+   "lumen_med_s": 0.00467965100000356,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_es :: mkv-video": {
+   "ratio": 16.07670839779711,
+   "n": 1,
+   "ff_med_s": 0.05288762800000768,
+   "lumen_med_s": 0.0032897050000144645,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_es :: aac-audio": {
+   "ratio": 15.158269219216963,
+   "n": 1,
+   "ff_med_s": 0.04488361999997892,
+   "lumen_med_s": 0.0029609990000096786,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_es :: mp3-audio": {
+   "ratio": 14.27326778229548,
+   "n": 1,
+   "ff_med_s": 0.04578984200000491,
+   "lumen_med_s": 0.003208083999993505,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_ivf :: ivf-video": {
+   "ratio": 15.688047407204857,
+   "n": 2,
+   "ff_med_s": 0.04522900149999032,
+   "lumen_med_s": 0.0028830229999954327,
+   "ff_n": 2
+  },
+  "corpus/fuzz_demux_mkv :: mkv-video": {
+   "ratio": 16.57734262038768,
+   "n": 3,
+   "ff_med_s": 0.05350491500001908,
+   "lumen_med_s": 0.0032275929999912023,
+   "ff_n": 3
+  },
+  "corpus/fuzz_demux_mp3stream :: mp3-audio": {
+   "ratio": 13.788168848595113,
+   "n": 3,
+   "ff_med_s": 0.0446905299999969,
+   "lumen_med_s": 0.0032412230000034015,
+   "ff_n": 3
+  },
+  "corpus/fuzz_demux_mp4 :: mov-video": {
+   "ratio": 17.48782424662566,
+   "n": 3,
+   "ff_med_s": 0.05404157399999576,
+   "lumen_med_s": 0.003090240000005906,
+   "ff_n": 3
+  },
+  "corpus/fuzz_demux_ogg :: ogg-audio": {
+   "ratio": 15.660056846454005,
+   "n": 2,
+   "ff_med_s": 0.04593623200000252,
+   "lumen_med_s": 0.00293333750001068,
+   "ff_n": 2
+  },
+  "corpus/fuzz_demux_ps :: ts-audio": {
+   "ratio": 15.646584389460827,
+   "n": 1,
+   "ff_med_s": 0.04629347100001269,
+   "lumen_med_s": 0.002958694999989575,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_ps :: mov-video": {
+   "ratio": 17.99314705971431,
+   "n": 1,
+   "ff_med_s": 0.05303206600001431,
+   "lumen_med_s": 0.002947347999992189,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_ts :: ts-audio": {
+   "ratio": 16.85813090404561,
+   "n": 1,
+   "ff_med_s": 0.04855866600001946,
+   "lumen_med_s": 0.002880430000004708,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_ts :: ts-video": {
+   "ratio": 14.803762874821587,
+   "n": 1,
+   "ff_med_s": 0.04575903799999992,
+   "lumen_med_s": 0.003091040999976258,
+   "ff_n": 1
+  },
+  "corpus/fuzz_demux_wav :: wav-audio": {
+   "ratio": 15.582619386839594,
+   "n": 3,
+   "ff_med_s": 0.046260277999977006,
+   "lumen_med_s": 0.0029687100000046485,
+   "ff_n": 3
+  },
+  "generated/ivf :: ivf-video": {
+   "ratio": 15.795111766880169,
+   "n": 2,
+   "ff_med_s": 0.04565758699999378,
+   "lumen_med_s": 0.00289061499999832,
+   "ff_n": 2
+  },
+  "generated/malformed :: avi-video": {
+   "ratio": 3.157524450235333,
+   "n": 8,
+   "ff_med_s": 0.053637041499996485,
+   "lumen_med_s": 0.016987055000001305,
+   "ff_n": 8
+  },
+  "generated/malformed :: mkv-video": {
+   "ratio": 16.058516317736515,
+   "n": 4,
+   "ff_med_s": 0.05533127199998944,
+   "lumen_med_s": 0.0034456030000029614,
+   "ff_n": 5
+  },
+  "generated/malformed :: mov-video": {
+   "ratio": 17.508500208419733,
+   "n": 6,
+   "ff_med_s": 0.0537538970000071,
+   "lumen_med_s": 0.0030701600000071494,
+   "ff_n": 7
+  },
+  "generated/valid :: aiff-audio": {
+   "ratio": 14.446647870509295,
+   "n": 2,
+   "ff_med_s": 0.042287996499993596,
+   "lumen_med_s": 0.0029271839999864824,
+   "ff_n": 2
+  },
+  "generated/valid :: avi-video": {
+   "ratio": 4.037010028625407,
+   "n": 2,
+   "ff_med_s": 0.04875288500001318,
+   "lumen_med_s": 0.012076483499996016,
+   "ff_n": 2
+  },
+  "generated/valid :: mkv-video": {
+   "ratio": 16.48221348467301,
+   "n": 4,
+   "ff_med_s": 0.05383924099999149,
+   "lumen_med_s": 0.0032665055000080656,
+   "ff_n": 4
+  },
+  "generated/valid :: mov-video": {
+   "ratio": 18.280584094930077,
+   "n": 7,
+   "ff_med_s": 0.053817545999976346,
+   "lumen_med_s": 0.002943973000014921,
+   "ff_n": 7
+  },
+  "generated/valid :: ogg-audio": {
+   "ratio": 15.326186791643531,
+   "n": 3,
+   "ff_med_s": 0.046508356000003914,
+   "lumen_med_s": 0.003034568000003901,
+   "ff_n": 3
+  },
+  "generated/valid :: wav-audio": {
+   "ratio": 15.224128669783138,
+   "n": 6,
+   "ff_med_s": 0.04595713049998551,
+   "lumen_med_s": 0.003018703500003994,
+   "ff_n": 6
+  },
+  "hls/adts_vod :: aac-audio": {
+   "ratio": 12.957829213743105,
+   "n": 4,
+   "ff_med_s": 0.047779759999997395,
+   "lumen_med_s": 0.0036873274999891237,
+   "ff_n": 4
+  },
+  "hls/ts_live :: ts-audio": {
+   "ratio": 15.466821239506674,
+   "n": 5,
+   "ff_med_s": 0.04578825600000869,
+   "lumen_med_s": 0.0029604179999864755,
+   "ff_n": 5
+  },
+  "fixtures/mjpeg_h3 :: avi-video": {
+   "ratio": 11.085406967875235,
+   "n": 4,
+   "ff_med_s": 0.04243138500000043,
+   "lumen_med_s": 0.003827679499991632,
+   "ff_n": 4
+  }
+ }
+}
