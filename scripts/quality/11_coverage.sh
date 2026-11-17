@@ -17,8 +17,11 @@ not_run "coverage:platform-macos" "test target does not compile off macOS (F-001
 head1 "11a. suite summary (JSON + LCOV)"
 # cargo-llvm-cov rejects --output-path given twice (one path per invocation),
 # so the run emits JSON and the LCOV report is regenerated from the same
-# cached profdata - no second test run.
-cargo llvm-cov nextest --workspace --all-features "${EXCLUDES[@]}" \
+# cached profdata - no second test run. --no-fail-fast: one failing test
+# must not cancel the remaining 4,000+ and leave the coverage evidence
+# 97% empty (audit run 29's shape); failures still surface in the log
+# and the tier's reporter plumbing.
+cargo llvm-cov nextest --workspace --all-features --no-fail-fast "${EXCLUDES[@]}" \
   --json --output-path "$OUT/cov.json" \
   2>&1 | tee "$OUT/coverage.log" | tail -30
 say "exit=$?"

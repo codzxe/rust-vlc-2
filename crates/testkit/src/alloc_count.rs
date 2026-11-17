@@ -46,9 +46,64 @@
 //! processes and cannot interfere.
 
 use std::alloc::{GlobalAlloc, Layout, System};
+use std::backtrace::Backtrace;
+use std::cell::{Cell, RefCell};
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicIsize, AtomicU64, Ordering};
+
+// ---------------------------------------------------------------------------
+// Diagnostic: name the allocation sites inside a FAILING window
+// ---------------------------------------------------------------------------
+// A bare "allocated 900 bytes across 4 events" cannot be acted on. When
+// LUMEN_ALLOC_TRACE is set in the environment, every counted allocation
+// event that happens while a guard window is open on this thread ALSO
+// captures a backtrace (capped at TRACE_CAP events), and assert_zero's
+// failure message prints them. Cost profile: zero when the env var is
+// unset (one OnceLock read), negligible when set - zero-alloc windows
+// are empty by definition, and the capture only fires on events INSIDE
+// a window. Reentrancy: Backtrace itself allocates; IN_TRACE forwards
+// those allocations to System uncounted and uncaptured.
+
+const TRACE_CAP: usize = 16;
+
+thread_local! {
+    static WINDOW_ACTIVE: Cell<bool> = const { Cell::new(false) };
+    static IN_TRACE: Cell<bool> = const { Cell::new(false) };
+    static TRACED: RefCell<Vec<(usize, String)>> = const { RefCell::new(Vec::new()) };
+}
+
+fn trace_enabled() -> bool {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var_os("LUMEN_ALLOC_TRACE").is_some_and(|v| v != "0"))
+}
+
+/// Capture the allocation site when tracing is armed and a window is
+/// open. Called from the counting allocator, so it must never allocate
+/// on its own behalf unguarded: IN_TRACE is raised FIRST, before any
+/// check that can itself allocate (trace_enabled's env read does - an
+/// unguarded OnceLock::get_or_init re-entering from its own allocation
+/// deadlocks, proven by the e2e hang before this ordering existed).
+/// Captures are suppressed while the thread is panicking: capturing a
+/// backtrace from inside panic/unwind machinery is the std-documented
+/// allocator deadlock (the second e2e hang).
+fn note_event_for_trace(size: usize) {
+    if IN_TRACE.get() {
+        return;
+    }
+    IN_TRACE.set(true);
+    if trace_enabled() && WINDOW_ACTIVE.get() && !std::thread::panicking() {
+        let backtrace = Backtrace::force_capture().to_string();
+        TRACED.with(|traced| {
+            let mut traced = traced.borrow_mut();
+            if traced.len() < TRACE_CAP {
+                traced.push((size, backtrace));
+            }
+        });
+    }
+    IN_TRACE.set(false);
+}
 
 /// The whole-binary serializer for counting-allocator test binaries.
 ///
@@ -121,9 +176,14 @@ impl AllocState {
 
     /// Begin a measured window: snapshot now, assert the delta at
     /// [`CountingGuard::assert_zero`]. The guard itself allocates
-    /// nothing.
+    /// nothing (the optional trace arming below runs BEFORE the
+    /// snapshot, so its own allocations are outside the window).
     #[must_use = "an unasserted guard proves nothing"]
     pub fn guard(&self) -> CountingGuard<'_> {
+        if trace_enabled() {
+            TRACED.with(|traced| traced.borrow_mut().clear());
+            WINDOW_ACTIVE.with(|active| active.set(true));
+        }
         CountingGuard {
             state: self,
             start: self.snapshot(),
@@ -193,10 +253,25 @@ impl CountingGuard<'_> {
     #[track_caller]
     pub fn assert_zero(&self, context: &str) {
         let delta = self.delta();
+        if delta.alloc_calls == 0 && delta.total_bytes == 0 {
+            WINDOW_ACTIVE.with(|active| active.set(false));
+            return;
+        }
+        // Failure path: allocation here is fine (the window already
+        // failed). Name every captured site so the finding is actionable.
+        let traces = TRACED.with(|traced| std::mem::take(&mut *traced.borrow_mut()));
+        WINDOW_ACTIVE.with(|active| active.set(false));
+        let mut sites = String::new();
+        for (i, (size, backtrace)) in traces.iter().enumerate() {
+            sites.push_str(&format!("\n  [{i}] {size} bytes at:\n{backtrace}"));
+        }
+        if sites.is_empty() {
+            sites.push_str("\n  (no sites captured - set LUMEN_ALLOC_TRACE=1 to name them)");
+        }
         assert!(
             delta.alloc_calls == 0 && delta.total_bytes == 0,
             "{context}: allocated {} bytes across {} allocation events \
-             (dealloc events: {}) — the path is NOT zero-allocation",
+             (dealloc events: {}) — the path is NOT zero-allocation{sites}",
             delta.total_bytes,
             delta.alloc_calls,
             delta.dealloc_calls
@@ -238,8 +313,9 @@ unsafe impl GlobalAlloc for CountingGlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // SAFETY: forwarded verbatim (module docs).
         let ptr = unsafe { System.alloc(layout) };
-        if !ptr.is_null() {
+        if !ptr.is_null() && !IN_TRACE.get() {
             self.state.note_alloc(layout.size());
+            note_event_for_trace(layout.size());
         }
         ptr
     }
@@ -247,8 +323,9 @@ unsafe impl GlobalAlloc for CountingGlobalAlloc {
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         // SAFETY: forwarded verbatim (module docs).
         let ptr = unsafe { System.alloc_zeroed(layout) };
-        if !ptr.is_null() {
+        if !ptr.is_null() && !IN_TRACE.get() {
             self.state.note_alloc(layout.size());
+            note_event_for_trace(layout.size());
         }
         ptr
     }
@@ -265,9 +342,10 @@ unsafe impl GlobalAlloc for CountingGlobalAlloc {
         // window is visible as both a call delta and a byte delta.
         // SAFETY: forwarded verbatim (module docs).
         let out = unsafe { System.realloc(ptr, layout, new_size) };
-        if !out.is_null() {
+        if !out.is_null() && !IN_TRACE.get() {
             self.state.note_dealloc(layout.size());
             self.state.note_alloc(new_size);
+            note_event_for_trace(new_size);
         }
         out
     }
