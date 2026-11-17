@@ -65,13 +65,14 @@ case "$cmd" in
     # rustc has no -Zsanitizer=undefined (valid values are address, cfi,
     # dataflow, hwaddress, kcfi, kernel-address, kernel-hwaddress, leak,
     # memory, memtag, safestack, shadow-call-stack, thread, realtime).
-    # The native equivalent is -Zub-checks + explicit overflow checks, with
-    # -Zbuild-std so precompiled std is rebuilt instrumented too - without
-    # build-std every locally-compiled crate already runs under
+    # The native equivalent is -Zub-checks (verified: -Zhelp), with
+    # explicit overflow checks (a -C codegen option, not -Z) and
+    # -Zbuild-std so precompiled std is rebuilt instrumented too -
+    # without build-std every locally-compiled crate already runs under
     # debug-assertions (ub-checks defaults to it) and the lane would add
     # nothing over a normal test run (the cargo-careful insight).
     if [ -n "$crate" ]; then SCOPE=(-p "$crate"); else SCOPE=("${EXCL[@]}"); fi
-    RUSTFLAGS="-Zub-checks=yes -Zoverflow-checks=yes" \
+    RUSTFLAGS="-Zub-checks=yes -Coverflow-checks=on" \
       cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu \
       "${SCOPE[@]}" --all-features 2>&1 | tee "$OUT/ub/ubsan.log" | tail -30
     ;;
