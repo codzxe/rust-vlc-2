@@ -64,8 +64,8 @@ pub mod buffered;
 #[cfg(any(test, feature = "contract"))]
 pub mod contract;
 pub mod error;
-pub mod fuzz;
 pub mod file;
+pub mod fuzz;
 pub mod seekable;
 pub mod uri;
 
