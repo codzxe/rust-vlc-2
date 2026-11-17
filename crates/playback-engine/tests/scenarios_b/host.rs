@@ -2325,3 +2325,53 @@ pub fn thread_names() -> Vec<String> {
         })
         .unwrap_or_default()
 }
+
+/// This thread's own tid (Linux; `None` elsewhere), via the
+/// `/proc/thread-self` symlink - the family oracle below must not
+/// count the test's own thread as a leak.
+#[must_use]
+pub fn self_tid() -> Option<String> {
+    let link = std::fs::read_link("/proc/thread-self").ok()?;
+    link.file_name()?.to_str().map(str::to_owned)
+}
+
+/// The thread-leak oracle: every thread that is NOT libtest's own.
+///
+/// Why this shape (the w31.x / CI-run-14 flake, root-caused with a
+/// pthread_create interposer): libtest spawns ONE thread per test and
+/// names it after the TEST MODULE, so the two scenario_16 tests share
+/// the comm "scenario_16_exi..." - the old all-threads count oracle
+/// (and a same-name family filter) sees the sibling test parked on
+/// `serialize_tests()`' mutex as a "leak". Measured: 23/23 thread
+/// creations in this binary are libtest's own test threads; the
+/// engine itself is thread-free by design (doc 03 SS4.6(c), "without
+/// spawning anything"). The threads a session could ever leak are
+/// therefore exactly the non-test ones, and when the documented
+/// thread-per-session spawn lands (cards 2.E1/3.B3) this oracle is
+/// already watching for them.
+#[must_use]
+pub fn non_test_threads() -> Vec<String> {
+    let me = self_tid();
+    let main_comm = std::fs::read_to_string("/proc/self/comm")
+        .map(|c| c.trim().to_owned())
+        .unwrap_or_default();
+    std::fs::read_dir("/proc/self/task")
+        .map(|rd| {
+            rd.filter_map(std::io::Result::ok)
+                .filter_map(|entry| {
+                    let tid = entry.file_name().into_string().ok()?;
+                    if Some(&tid) == me.as_ref() {
+                        return None;
+                    }
+                    let comm =
+                        std::fs::read_to_string(format!("/proc/self/task/{tid}/comm")).ok()?;
+                    let comm = comm.trim();
+                    // libtest's own: the main thread and every test
+                    // thread (named after its test module).
+                    let is_libtest = comm == main_comm || comm.starts_with("scenario_");
+                    (!is_libtest).then(|| format!("{tid}={comm}"))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}

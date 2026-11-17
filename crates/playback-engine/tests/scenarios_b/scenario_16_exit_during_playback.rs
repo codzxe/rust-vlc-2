@@ -49,7 +49,7 @@ use commands::{Command, PlaybackState};
 use testkit::Must;
 use testkit::alloc_count::serialize_tests;
 
-use crate::host::{ScenarioHost, TempDir, dispatch, open_fds, thread_count};
+use crate::host::{ScenarioHost, TempDir, dispatch, open_fds};
 
 /// Doc 03 §4.6 S2's proposed teardown deadline.
 const TEARDOWN_DEADLINE: Duration = Duration::from_secs(2);
@@ -82,7 +82,6 @@ fn abrupt_drop_mid_playback_releases_everything_within_deadline() {
     let media = scratch.copy_parent("exit-mid-play.avi");
 
     let fds_before = open_fds();
-    let threads_before = thread_count();
 
     let mut host = ScenarioHost::new();
     let hooks = host.arm_drop_hooks();
@@ -135,22 +134,27 @@ fn abrupt_drop_mid_playback_releases_everything_within_deadline() {
         fds_before,
         "the file handle is closed immediately after the drop"
     );
-    // No threads leaked. The drop is synchronous but the kernel's
-    // thread accounting can lag it under CI load (w31.3's racy shape)
-    // — a bounded poll instead of an instantaneous count, and the
-    // failure NAMES the lingering threads so the next CI flake
-    // identifies itself instead of staying a bare number.
+    // No threads leaked. The oracle counts every thread that is NOT
+    // libtest's own (main + the per-test threads): those are exactly
+    // the threads a session could ever leak - the engine is
+    // thread-free by design (doc 03 SS4.6(c); measured: 23/23
+    // creations in this binary are libtest's). The old all-threads
+    // count was polluted by sibling tests parking on
+    // serialize_tests()'s mutex - the w31.x/CI-14 flake, root-caused
+    // with a pthread_create interposer. A bounded poll, and the
+    // failure names whatever lingers.
     let leaked_deadline = Instant::now() + Duration::from_secs(15);
     loop {
-        if thread_count() == threads_before {
+        let leaked = crate::host::non_test_threads();
+        if leaked.is_empty() {
             break;
         }
         if Instant::now() >= leaked_deadline {
-            let names = crate::host::thread_names();
             assert!(
-                thread_count() == threads_before,
-                "no threads leaked (still {} vs baseline {threads_before:?} after the 15s bound); threads now: {names:?}",
-                thread_count().unwrap_or_default()
+                leaked.is_empty(),
+                "no threads leaked (non-test threads still alive after the 15s bound): {leaked:?} \
+                 (all threads: {:?})",
+                crate::host::thread_names()
             );
         }
         std::thread::sleep(Duration::from_millis(25));
