@@ -304,15 +304,32 @@ fn xdg_dialogs_without_any_backend_refuse_with_the_typed_error() {
     );
 
     // A crashing fallback surfaces as the typed call failure.
+    //
+    // Bounded ETXTBSY retry, the same cure as the sibling xdg tests
+    // (`open_file_retrying_etxtbsy`): the runner's overlayfs can
+    // transiently refuse the exec that immediately follows the staging
+    // rename with "Text file busy" - a spawn race, not the CallFailed
+    // this test asserts on (CI gate run 8, 2026-11-17).
     let root = temp_root("xdg-crash");
     let bin = root.join("bin");
     fs::create_dir_all(&bin).must();
     write_script(&bin.join("zenity"), "echo 'zenity broke' >&2\nexit 2");
     let mut dialogs = XdgDialogs::with_config(vec![bin], None);
-    let err = assert_err(
-        dialogs.open_file(&FileDialogRequest::default()),
-        "crash surfaces",
-    );
+    let err = {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            match dialogs.open_file(&FileDialogRequest::default()) {
+                Err(PlatformError::SpawnFailed { detail, .. })
+                    if detail.contains("Text file busy") && attempt < 4 =>
+                {
+                    std::thread::sleep(std::time::Duration::from_millis(150 * attempt));
+                }
+                Err(err) => break err,
+                Ok(_) => unreachable!("crashing zenity must fail the pick"),
+            }
+        }
+    };
     let PlatformError::CallFailed { api, code, .. } = &err else {
         unreachable!("expected CallFailed, got {err:?}");
     };
