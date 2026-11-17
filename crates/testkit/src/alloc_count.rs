@@ -76,6 +76,8 @@ thread_local! {
 
 fn trace_enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
+    // A diagnostic tooling contract (an opt-in CI/developer knob), not a product config value.
+    // lumen-allow-literal: env-var name — diagnostic knob, not config
     *ENABLED.get_or_init(|| std::env::var_os("LUMEN_ALLOC_TRACE").is_some_and(|v| v != "0"))
 }
 
@@ -266,6 +268,7 @@ impl CountingGuard<'_> {
             sites.push_str(&format!("\n  [{i}] {size} bytes at:\n{backtrace}"));
         }
         if sites.is_empty() {
+            // lumen-allow-literal: diagnostic prose naming the env knob
             sites.push_str("\n  (no sites captured - set LUMEN_ALLOC_TRACE=1 to name them)");
         }
         assert!(
