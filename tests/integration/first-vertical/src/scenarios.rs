@@ -524,16 +524,18 @@ pub fn scenario_seek() -> ScenarioRun {
         // The decode accounting proves the pipeline was not rebuilt:
         // the pre-seek decode-ahead deliveries stay counted plus the
         // landing's own half — a stop→close→reopen would have
-        // answered exactly the landing's 60.
+        // answered exactly the landing's 60. (Numbers re-pinned after
+        // the w2x open-phase decode-ahead retune: 30 pre-seek + 60
+        // landing; was 94 + 60 pre-consolidation.)
         checks.push(Check::int(
             "the decode accounting keeps the pre-seek deliveries",
             i64::try_from(accounting.frames_accepted).unwrap_or(i64::MAX),
-            154,
+            90,
         ));
         checks.push(Check::int(
             "the scheduler saw the pre-seek window plus the landing",
             i64::try_from(accounting.scheduler_pushed).unwrap_or(i64::MAX),
-            46,
+            45,
         ));
         // The seek-boundary proofs: the pre-seek scheduler window
         // purged wholesale as stale at the generation change, and the
@@ -542,7 +544,7 @@ pub fn scenario_seek() -> ScenarioRun {
         checks.push(Check::int(
             "the pre-seek scheduler window purged as stale",
             i64::try_from(accounting.scheduler_dropped_stale).unwrap_or(i64::MAX),
-            16,
+            15,
         ));
         checks.push(Check::int(
             "the presentation queue carries the seek's mint",

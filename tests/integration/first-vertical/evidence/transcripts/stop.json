@@ -147,22 +147,23 @@
       "session": 1,
       "gen": 0,
       "kind": "session.buffering",
-      "progress": "0.00"
+      "progress": "1.00"
     },
     {
       "seq": 9,
       "session": 1,
       "gen": 0,
-      "kind": "session.buffering",
-      "progress": "1.00"
+      "kind": "session.state-changed",
+      "from": "Buffering",
+      "to": "Playing"
     },
     {
       "seq": 10,
       "session": 1,
       "gen": 0,
-      "kind": "session.state-changed",
-      "from": "Buffering",
-      "to": "Playing"
+      "kind": "timing.time-tick",
+      "time_us": 533334,
+      "position": "0.267"
     },
     {
       "seq": 11,
@@ -177,16 +178,16 @@
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
-      "time_us": 533334,
-      "position": "0.267"
+      "time_us": 800000,
+      "position": "0.400"
     },
     {
       "seq": 13,
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
-      "time_us": 800000,
-      "position": "0.400"
+      "time_us": 1100000,
+      "position": "0.550"
     },
     {
       "seq": 14,

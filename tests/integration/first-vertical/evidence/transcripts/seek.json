@@ -110,17 +110,10 @@
       "session": 1,
       "gen": 0,
       "kind": "session.buffering",
-      "progress": "0.00"
-    },
-    {
-      "seq": 9,
-      "session": 1,
-      "gen": 0,
-      "kind": "session.buffering",
       "progress": "1.00"
     },
     {
-      "seq": 10,
+      "seq": 9,
       "session": 1,
       "gen": 0,
       "kind": "session.state-changed",
@@ -128,7 +121,7 @@
       "to": "Playing"
     },
     {
-      "seq": 11,
+      "seq": 10,
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
@@ -136,7 +129,7 @@
       "position": "0.000"
     },
     {
-      "seq": 12,
+      "seq": 11,
       "session": 1,
       "gen": 0,
       "kind": "session.state-changed",
@@ -144,7 +137,7 @@
       "to": "Paused"
     },
     {
-      "seq": 13,
+      "seq": 12,
       "session": 1,
       "gen": 1,
       "kind": "session.state-changed",
@@ -152,14 +145,14 @@
       "to": "Paused"
     },
     {
-      "seq": 14,
+      "seq": 13,
       "session": 1,
       "gen": 1,
       "kind": "(unrecorded event kind)",
       "debug": "TimingSeekCompleted { position: Timestamp(1000000), seek_kind: Command }"
     },
     {
-      "seq": 15,
+      "seq": 14,
       "session": 1,
       "gen": 1,
       "kind": "timing.time-tick",
@@ -167,7 +160,7 @@
       "position": "0.500"
     },
     {
-      "seq": 16,
+      "seq": 15,
       "session": 1,
       "gen": 1,
       "kind": "session.state-changed",
@@ -175,7 +168,7 @@
       "to": "Playing"
     },
     {
-      "seq": 17,
+      "seq": 16,
       "session": 1,
       "gen": 1,
       "kind": "playback.end-of-track",
@@ -183,7 +176,7 @@
       "track_id": 0
     },
     {
-      "seq": 18,
+      "seq": 17,
       "session": 1,
       "gen": 1,
       "kind": "timing.time-tick",
@@ -191,7 +184,7 @@
       "position": "0.633"
     },
     {
-      "seq": 19,
+      "seq": 18,
       "session": 1,
       "gen": 1,
       "kind": "timing.time-tick",
@@ -199,7 +192,7 @@
       "position": "0.767"
     },
     {
-      "seq": 20,
+      "seq": 19,
       "session": 1,
       "gen": 1,
       "kind": "timing.time-tick",
@@ -207,13 +200,13 @@
       "position": "0.900"
     },
     {
-      "seq": 21,
+      "seq": 20,
       "session": 1,
       "gen": 1,
       "kind": "playback.end-of-media"
     },
     {
-      "seq": 22,
+      "seq": 21,
       "session": 1,
       "gen": 1,
       "kind": "session.state-changed",
@@ -226,24 +219,24 @@
     "position_us": 2000000,
     "session": 1,
     "accounting": {
-      "frames_accepted": 154,
+      "frames_accepted": 90,
       "frames_refused": 0,
-      "video_presented": 0,
+      "video_presented": 1,
       "video_refused": 0,
-      "scheduler_pushed": 46,
-      "scheduler_presented": 29,
+      "scheduler_pushed": 45,
+      "scheduler_presented": 30,
       "scheduler_repeats": 87,
       "scheduler_dropped_late": 0,
-      "scheduler_dropped_stale": 16,
+      "scheduler_dropped_stale": 15,
       "queue_flushed": 0,
       "queue_published": 1,
-      "staging_frames": 0,
-      "staging_bytes": 0,
-      "staging_copies": 0
+      "staging_frames": 1,
+      "staging_bytes": 307200,
+      "staging_copies": 1
     },
     "final_png": {
       "bytes": 307541,
-      "sha256": "edc8ee72f97d95723afb8730004620d631b5dc8a5765138d239ad0711103879f",
+      "sha256": "77fba905530dc71d48ecd04b4219ce3f489b9da27beb182cc72906e59d5ab842",
       "width": 320,
       "height": 240
     }

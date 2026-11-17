@@ -1796,7 +1796,7 @@ mod session_backpressure_tests {
         // Silence: the lane's geometry is the subject, not its content.
         wav.resize(44 + data_len as usize, 0);
         let path = std::env::temp_dir().join(format!(
-            "lumen-backpressure-{}-{}s.wav",
+            "lumen-backpressure-{}-{}s.wav", // lumen-allow-literal: cfg(test) scratch filename — test-only, never a shipped surface
             std::process::id(),
             seconds
         ));

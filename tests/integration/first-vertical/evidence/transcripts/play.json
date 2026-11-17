@@ -99,17 +99,10 @@
       "session": 1,
       "gen": 0,
       "kind": "session.buffering",
-      "progress": "0.00"
-    },
-    {
-      "seq": 9,
-      "session": 1,
-      "gen": 0,
-      "kind": "session.buffering",
       "progress": "1.00"
     },
     {
-      "seq": 10,
+      "seq": 9,
       "session": 1,
       "gen": 0,
       "kind": "session.state-changed",
@@ -117,7 +110,7 @@
       "to": "Playing"
     },
     {
-      "seq": 11,
+      "seq": 10,
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
@@ -125,7 +118,7 @@
       "position": "0.000"
     },
     {
-      "seq": 12,
+      "seq": 11,
       "session": 1,
       "gen": 0,
       "kind": "session.state-changed",
@@ -133,12 +126,20 @@
       "to": "Paused"
     },
     {
-      "seq": 13,
+      "seq": 12,
       "session": 1,
       "gen": 0,
       "kind": "session.state-changed",
       "from": "Paused",
       "to": "Playing"
+    },
+    {
+      "seq": 13,
+      "session": 1,
+      "gen": 0,
+      "kind": "timing.time-tick",
+      "time_us": 533334,
+      "position": "0.267"
     },
     {
       "seq": 14,
@@ -153,19 +154,11 @@
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
-      "time_us": 533334,
-      "position": "0.267"
-    },
-    {
-      "seq": 16,
-      "session": 1,
-      "gen": 0,
-      "kind": "timing.time-tick",
       "time_us": 800000,
       "position": "0.400"
     },
     {
-      "seq": 17,
+      "seq": 16,
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
@@ -173,7 +166,7 @@
       "position": "0.533"
     },
     {
-      "seq": 18,
+      "seq": 17,
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
@@ -181,7 +174,7 @@
       "position": "0.667"
     },
     {
-      "seq": 19,
+      "seq": 18,
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
@@ -189,7 +182,7 @@
       "position": "0.800"
     },
     {
-      "seq": 20,
+      "seq": 19,
       "session": 1,
       "gen": 0,
       "kind": "timing.time-tick",
@@ -197,13 +190,13 @@
       "position": "0.933"
     },
     {
-      "seq": 21,
+      "seq": 20,
       "session": 1,
       "gen": 0,
       "kind": "playback.end-of-media"
     },
     {
-      "seq": 22,
+      "seq": 21,
       "session": 1,
       "gen": 0,
       "kind": "session.state-changed",
@@ -218,22 +211,22 @@
     "accounting": {
       "frames_accepted": 120,
       "frames_refused": 0,
-      "video_presented": 16,
+      "video_presented": 17,
       "video_refused": 0,
       "scheduler_pushed": 60,
       "scheduler_presented": 60,
-      "scheduler_repeats": 132,
+      "scheduler_repeats": 129,
       "scheduler_dropped_late": 0,
       "scheduler_dropped_stale": 0,
       "queue_flushed": 0,
       "queue_published": 0,
-      "staging_frames": 16,
-      "staging_bytes": 4915200,
-      "staging_copies": 16
+      "staging_frames": 17,
+      "staging_bytes": 5222400,
+      "staging_copies": 17
     },
     "final_png": {
       "bytes": 307541,
-      "sha256": "698af4ee249d8b31925ad958ba49ca4dcf1a530aa949c6aab30a8ed93cb553db",
+      "sha256": "d833afdb1212f243228184836d38e90c0574866682bcd9c7db6965b3f5c5cca8",
       "width": 320,
       "height": 240
     }

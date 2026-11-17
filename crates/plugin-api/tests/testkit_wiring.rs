@@ -40,17 +40,17 @@ fn kind_vocabulary_round_trips_through_the_kit() {
     // and the names are unique — data, never hand-typed copy.
     let mut names: Vec<&str> = PluginKind::ALL.iter().map(|k| k.as_str()).collect();
     names.sort_unstable();
-    let distinct = names.iter().collect::<std::collections::BTreeSet<_>>().len();
+    let distinct = names
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
     assert_eq!(distinct, names.len(), "manifest kind names are unique");
     assert_eq!(names.len(), 16, "all sixteen §1.2 rows present");
 
     // Spot-check the spellings the §2.3 examples rely on.
     assert_eq!(PluginKind::Access.as_str(), "access");
     assert_eq!(PluginKind::AudioOutput.as_str(), "audio-output");
-    assert_eq!(
-        PluginKind::ServiceDiscovery.as_str(),
-        "service-discovery"
-    );
+    assert_eq!(PluginKind::ServiceDiscovery.as_str(), "service-discovery");
 
     // Hostile manifests are a typed error, not a panic — the Semver
     // lane above proves the same posture for versions.
