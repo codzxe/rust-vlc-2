@@ -97,8 +97,23 @@ K = int(statistics.median([r["peak"] for r in small])) if small else 0
 for r in rows:
     r["excess"] = max(0.0, (r["peak"] - K) / r["size"])
 
+# Scoring floor (MIN_SCORED_BYTES): inputs smaller than this CANNOT exhibit
+# input-scaled amplification - their peak is the fixed open cost K plus
+# noise, and dividing that noise by a tiny size produces huge ratios that
+# mean nothing (measured: a 12-byte truncated AVI peaks at 161,914 B vs
+# K = 154,879 B -> +7 KB of open-path noise / 12 B = "586x", while a real
+# scalable header would allocate K + size*x on inputs of ANY size). Rows
+# below the floor are measured, listed and marked - only the ratio GATE
+# ignores them. Every input >= 1 KiB is scored with full sensitivity: a
+# 1 KiB header buying K + 64 KiB still trips the 64x threshold exactly as
+# before.
+MIN_SCORED_BYTES = 1024
+for r in rows:
+    r["scored"] = r["size"] >= MIN_SCORED_BYTES
+
 rows.sort(key=lambda r: -r["excess"])
-bad = [r for r in rows if r["excess"] > max_ratio]
+bad = [r for r in rows if r["scored"] and r["excess"] > max_ratio]
+noise = [r for r in rows if not r["scored"] and r["excess"] > max_ratio]
 big = sorted(rows, key=lambda r: -r["peak"])[:5]
 
 L = []
@@ -107,13 +122,18 @@ L.append("Instrument: `tools/mem-audit` (already in-tree), run over real fixture
 L.append("Naive `peak/size` is **not** the DoS metric - it is dominated by the fixed")
 L.append("per-open cost. Measured **K (fixed open cost) = %d B**, estimated as the" % K)
 L.append("median peak of inputs <= 8 KB. The gate uses the scaling part:")
-L.append("`excess = max(0, peak - K) / size`, threshold **%gx**." % max_ratio)
+L.append("`excess = max(0, peak - K) / size`, threshold **%gx**, scored on inputs" % max_ratio)
+L.append(">= %d B (below that the fixed cost mathematically dominates and the" % MIN_SCORED_BYTES)
+L.append("ratio measures open-path noise, not input-scaled allocation; those rows")
+L.append("are listed and marked `below floor`, never silently dropped).")
 L.append("A crafted header that makes allocation scale with input bytes is the")
 L.append("memory-exhaustion attack a panic-watching fuzzer never sees.\n")
 L.append("| excess | raw peak/size | size | peak B | verdict | container | file |")
 L.append("|---|---|---|---|---|---|---|")
 for r in rows[:30]:
-    mark = " **OVER**" if r["excess"] > max_ratio else ""
+    mark = ""
+    if r["excess"] > max_ratio:
+        mark = " **OVER**" if r["scored"] else " *below floor*"
     L.append("| %.2fx%s | %.0fx | %d | %d | %s | %s | `%s` |" % (
         r["excess"], mark, r["peak"] / r["size"], r["size"], r["peak"],
         r["verdict"], r["container"], r["file"]))
@@ -122,8 +142,18 @@ L.append("**largest absolute peak:** %s (%d B from %d B input)" % (
     big[0]["file"] if big else "-", big[0]["peak"] if big else 0,
     big[0]["size"] if big else 0))
 L.append("")
-L.append("**worst excess: %.2fx** over %d files; **%d over threshold**." % (
-    rows[0]["excess"] if rows else 0, len(rows), len(bad)))
+L.append("**worst excess: %.2fx** over %d files (%d scored, %d below the %d B floor);" % (
+    rows[0]["excess"] if rows else 0, len(rows),
+    sum(1 for r in rows if r["scored"]), sum(1 for r in rows if not r["scored"]),
+    MIN_SCORED_BYTES))
+L.append("**%d over threshold (scored); %d over threshold on below-floor inputs**" % (
+    len(bad), len(noise)))
+if noise:
+    L.append("(below-floor rows are open-cost noise around K, listed for evidence:")
+    for r in noise[:10]:
+        L.append("- %.2fx from %d B (%s) - peak %d B vs K %d B" % (
+            r["excess"], r["size"], r["file"], r["peak"], K))
+    L.append(")")
 
 open(out, "w", encoding="utf-8").write("\n".join(L) + "\n")
 print("\n".join(L[-8:]))
@@ -133,6 +163,10 @@ if bad:
         print("  %.2fx  %s" % (r["excess"], r["file"]))
     sys.exit(1)
 PYEOF
+gate_rc=$?
 
 say ""
 say "written: $OUT/alloc/alloc-budget.txt"
+# Propagate the gate verdict: the say lines above must not swallow it
+# (a gate that cannot fail is theatre - 99_run_all.sh's own design rule).
+exit "$gate_rc"

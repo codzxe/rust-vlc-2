@@ -166,6 +166,10 @@ open(out_path, "w", encoding="utf-8").write("\n".join(L) + "\n")
 print("\n".join(L[-10:]))
 sys.exit(rc)
 PYEOF
+gate_rc=$?
 
 say ""
 say "written: $OUTF"
+# Propagate the gate verdict: the say lines above must not swallow it
+# (a gate that cannot fail is theatre - 99_run_all.sh's own design rule).
+exit "$gate_rc"
