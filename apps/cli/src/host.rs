@@ -1772,10 +1772,19 @@ mod session_backpressure_tests {
     use std::path::PathBuf;
     use testkit::Must;
 
-    /// Write a `seconds`-long 44.1 kHz mono s16le WAV to a unique
+    /// Write a `seconds`-long 44.1 kHz stereo s16le WAV to a unique
     /// temp path and answer it.
     fn long_wav(seconds: u32) -> PathBuf {
         use std::io::Write as _;
+        // Per-CALL unique scratch name: the backpressure proofs run
+        // concurrently on CI's test workers yet share one process
+        // (one pid) — a pid-only name had two tests writing the SAME
+        // file at once, and the opener then read a half-written WAV
+        // (valid header, truncated tail) straight into a typed
+        // truncation fatal. The sequence number gives every call its
+        // own file.
+        static WAV_SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let seq = WAV_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let rate: u32 = 44_100;
         let frames = u64::from(seconds) * u64::from(rate);
         let data_len = frames * 2 * 2; // stereo s16le
@@ -1796,8 +1805,9 @@ mod session_backpressure_tests {
         // Silence: the lane's geometry is the subject, not its content.
         wav.resize(44 + data_len as usize, 0);
         let path = std::env::temp_dir().join(format!(
-            "lumen-backpressure-{}-{}s.wav", // lumen-allow-literal: cfg(test) scratch filename — test-only, never a shipped surface
+            "lumen-backpressure-{}-{}-{}s.wav", // lumen-allow-literal: cfg(test) scratch filename — test-only, never a shipped surface
             std::process::id(),
+            seq,
             seconds
         ));
         let mut file = std::fs::File::create(&path).must();

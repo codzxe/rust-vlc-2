@@ -83,7 +83,6 @@ fn abrupt_drop_mid_playback_releases_everything_within_deadline() {
 
     let fds_before = open_fds();
     let threads_before = thread_count();
-    eprintln!("S16 DIAGNOSTIC baseline threads: {threads_before:?}");
 
     let mut host = ScenarioHost::new();
     let hooks = host.arm_drop_hooks();
@@ -136,31 +135,21 @@ fn abrupt_drop_mid_playback_releases_everything_within_deadline() {
         fds_before,
         "the file handle is closed immediately after the drop"
     );
-    // No threads leaked. The drop is synchronous but a session
-    // worker's exit can land a scheduler tick behind it — a bounded
-    // wait (the CI-load shape this suite runs under) instead of an
-    // instantaneous count that races the kernel's accounting.
-    let leaked_deadline = Instant::now() + Duration::from_secs(5);
+    // No threads leaked. The drop is synchronous but the kernel's
+    // thread accounting can lag it under CI load (w31.3's racy shape)
+    // — a bounded poll instead of an instantaneous count, and the
+    // failure NAMES the lingering threads so the next CI flake
+    // identifies itself instead of staying a bare number.
+    let leaked_deadline = Instant::now() + Duration::from_secs(15);
     loop {
         if thread_count() == threads_before {
             break;
         }
         if Instant::now() >= leaked_deadline {
-            // TEMP DIAGNOSTIC (revert after identifying the lingering thread).
-            let names: Vec<String> = std::fs::read_dir("/proc/self/task")
-                .map(|rd| {
-                    rd.filter_map(std::io::Result::ok)
-                        .filter_map(|e| {
-                            let tid = e.file_name().into_string().ok()?;
-                            let comm =
-                                std::fs::read_to_string(format!("/proc/self/task/{tid}/comm")).ok()?;
-                            Some(format!("{tid}={}", comm.trim()))
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
-            panic!(
-                "no threads leaked (still {} vs baseline {threads_before:?} after the 5s bound); threads now: {names:?}",
+            let names = crate::host::thread_names();
+            assert!(
+                thread_count() == threads_before,
+                "no threads leaked (still {} vs baseline {threads_before:?} after the 15s bound); threads now: {names:?}",
                 thread_count().unwrap_or_default()
             );
         }

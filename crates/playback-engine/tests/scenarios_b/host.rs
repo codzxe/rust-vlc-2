@@ -2305,3 +2305,23 @@ pub fn thread_count() -> Option<usize> {
     }
     None
 }
+
+/// The process's thread ids with their `comm` names (Linux), so a
+/// leak-oracle failure names exactly what lingers. Empty off Linux
+/// or when `/proc` cannot be read (the count check stays the oracle;
+/// this is the evidence in the failure message).
+#[must_use]
+pub fn thread_names() -> Vec<String> {
+    std::fs::read_dir("/proc/self/task")
+        .map(|rd| {
+            rd.filter_map(std::io::Result::ok)
+                .filter_map(|entry| {
+                    let tid = entry.file_name().into_string().ok()?;
+                    let comm =
+                        std::fs::read_to_string(format!("/proc/self/task/{tid}/comm")).ok()?;
+                    Some(format!("{tid}={}", comm.trim()))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
