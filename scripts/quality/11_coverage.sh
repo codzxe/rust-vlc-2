@@ -15,6 +15,11 @@ not_run "coverage:platform-linux" "test target does not compile off Linux (F-001
 not_run "coverage:platform-macos" "test target does not compile off macOS (F-001)"
 
 head1 "11a. suite summary (JSON + LCOV)"
+# Arm the counting-guard diagnostic tracer for this run: a zero-alloc
+# window that fails under instrumentation prints its allocation sites
+# (default-off knob; inert without an open window). The e2e accounting
+# test steps aside while armed - see its tracer note.
+export LUMEN_ALLOC_TRACE=1
 # cargo-llvm-cov rejects --output-path given twice (one path per invocation),
 # so the run emits JSON and the LCOV report is regenerated from the same
 # cached profdata - no second test run. --no-fail-fast: one failing test
