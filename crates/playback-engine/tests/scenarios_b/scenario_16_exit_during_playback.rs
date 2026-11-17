@@ -83,6 +83,7 @@ fn abrupt_drop_mid_playback_releases_everything_within_deadline() {
 
     let fds_before = open_fds();
     let threads_before = thread_count();
+    eprintln!("S16 DIAGNOSTIC baseline threads: {threads_before:?}");
 
     let mut host = ScenarioHost::new();
     let hooks = host.arm_drop_hooks();
@@ -144,11 +145,25 @@ fn abrupt_drop_mid_playback_releases_everything_within_deadline() {
         if thread_count() == threads_before {
             break;
         }
-        assert!(
-            Instant::now() < leaked_deadline,
-            "no threads leaked (still {} vs baseline {threads_before:?} after the 5s bound)",
-            thread_count().unwrap_or_default()
-        );
+        if Instant::now() >= leaked_deadline {
+            // TEMP DIAGNOSTIC (revert after identifying the lingering thread).
+            let names: Vec<String> = std::fs::read_dir("/proc/self/task")
+                .map(|rd| {
+                    rd.filter_map(std::io::Result::ok)
+                        .filter_map(|e| {
+                            let tid = e.file_name().into_string().ok()?;
+                            let comm =
+                                std::fs::read_to_string(format!("/proc/self/task/{tid}/comm")).ok()?;
+                            Some(format!("{tid}={}", comm.trim()))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            panic!(
+                "no threads leaked (still {} vs baseline {threads_before:?} after the 5s bound); threads now: {names:?}",
+                thread_count().unwrap_or_default()
+            );
+        }
         std::thread::sleep(Duration::from_millis(25));
     }
     // No temp state: the scratch dir still holds exactly the media
