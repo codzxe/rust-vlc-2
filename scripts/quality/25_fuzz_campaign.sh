@@ -29,7 +29,20 @@ fi
 
 SUMMARY="$OUT/fuzz/campaign/summary.txt"
 : > "$SUMMARY"
+
+# cargo-fuzz needs the nightly toolchain (its -Zsanitizer/sancov flags),
+# but the workspace's rust-toolchain.toml pin (stable) silently hijacks
+# every `cargo` subprocess cargo-fuzz spawns: on audit run 35 all 39
+# targets died at "error: the option `Z` is only accepted on the nightly
+# compiler", exit=1 with 0 artifacts - which the artifact-only crash
+# count read as "clean". RUSTUP_TOOLCHAIN overrides the pin for the
+# whole process tree; the musl link target is cargo-fuzz's default and
+# is not part of a default nightly install.
+export RUSTUP_TOOLCHAIN=nightly
+rustup target add x86_64-unknown-linux-musl >/dev/null 2>&1 || true
+
 crashes=0
+build_failures=0
 for t in "${TARGETS[@]}"; do
   say ""
   say "--- $t (${SECS}s)"
@@ -45,6 +58,12 @@ for t in "${TARGETS[@]}"; do
   if [ "$arts" -gt 0 ]; then
     crashes=$((crashes + 1))
     say "CRASH: $arts artifact(s) -> fuzz/artifacts/$t/ (kept in reports)"
+  elif [ "$rc" -ne 0 ]; then
+    # A non-zero run WITHOUT a crash artifact is a build/infra failure
+    # (the run-35 shape) - never "clean". It must fail the campaign or
+    # the lane stays hollow: green while fuzzing nothing.
+    build_failures=$((build_failures + 1))
+    say "BUILD/RUN FAILURE (exit=$rc, no crash artifact) - see $log"
   else
     say "clean (exit=$rc)"
   fi
@@ -54,6 +73,6 @@ done
 head1 "campaign result"
 cat "$SUMMARY"
 say ""
-say "$crashes of ${#TARGETS[@]} targets produced artifacts"
+say "$crashes of ${#TARGETS[@]} targets produced artifacts; $build_failures failed to build/run"
 say "written: $SUMMARY"
-[ "$crashes" -eq 0 ]
+[ "$crashes" -eq 0 ] && [ "$build_failures" -eq 0 ]
