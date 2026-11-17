@@ -38,11 +38,18 @@ while IFS= read -r target; do
     fi
     crate="${call%%::*}"
     fn="${call##*::}"
+    # Crate import names use underscores while crate dirs use dashes
+    # (control_protocol -> crates/control-protocol): probe both spellings
+    # so harnesses in dashed-dir crates register (the audit's 4-boundary
+    # targets need this). The gate stays equally strict - the harness fn
+    # must exist either way.
+    cdir="crates/$crate/src"
+    [ -d "$cdir" ] || cdir="crates/${crate//_/-}/src"
     # grep, not rg: the CI runner image (ubuntu-26.04) does not ship
     # ripgrep, and the old `rg ... 2>/dev/null` hid the "command not
     # found" behind the redirect, failing every probe (W25 CI fix).
     # Plain grep -r is POSIX-portable and present everywhere we run.
-    if ! grep -rq "fn $fn" "crates/$crate/src"; then
+    if ! grep -rq "fn $fn" "$cdir"; then
         say "REGISTRY-GATE: $target: harness fn $fn not found in crates/$crate/src"
         harness_missing=1
     fi

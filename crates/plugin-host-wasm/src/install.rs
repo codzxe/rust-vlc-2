@@ -446,7 +446,9 @@ pub struct Removed {
 }
 
 /// A package that passed every validation step.
-struct ValidatedPackage {
+// pub(crate): reachable from the in-crate fuzz harness (validate_package
+// is pub(crate)); fields stay module-private - nobody outside reads them.
+pub(crate) struct ValidatedPackage {
     manifest: PluginManifest,
     package: LumenextPackage,
     signature: SignatureStatus,
@@ -468,7 +470,7 @@ struct ValidatedPackage {
 ///    scheme must agree with the package's detached block; the
 ///    status is recorded honestly (never `verified` in v1 — the
 ///    verifier is a Lead-approved crypto ADR away, doc 06 §10 Q5).
-fn validate_package(pkg: &[u8]) -> Result<ValidatedPackage, HostError> {
+pub(crate) fn validate_package(pkg: &[u8]) -> Result<ValidatedPackage, HostError> {
     let package = read_package(pkg)?;
     let manifest = parse_extension_manifest(&String::from_utf8_lossy(&package.manifest_toml))?;
     // (2) origin: disk/package manifests are extensions, always.

@@ -50,6 +50,7 @@ pub mod diagnostic;
 pub mod emit;
 pub mod model;
 pub mod parse;
+pub mod fuzz;
 pub mod runtime;
 pub mod validate;
 

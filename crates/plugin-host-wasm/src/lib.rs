@@ -80,6 +80,7 @@ pub mod error;
 pub mod fsjail;
 pub mod http;
 pub mod imports;
+pub mod fuzz;
 pub mod install;
 pub mod instance;
 pub mod limits;

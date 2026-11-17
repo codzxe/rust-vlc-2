@@ -39,6 +39,7 @@
 //! `unsafe`/`unwrap`/`expect`/`panic` (workspace lints).
 
 pub mod diagnostic;
+pub mod fuzz;
 pub mod lines;
 pub mod load;
 pub mod merge;

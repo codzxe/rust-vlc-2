@@ -1,0 +1,53 @@
+schema_version = 1
+[identity]
+name = "Lumen"
+short_name = "Lumen"
+publisher = "Lumen Contributors"          # [PROPOSAL] placeholder entity
+display_version = "0.1.3"
+version_code = 4
+description_key = "product.description"
+[identity.ids]
+reverse_dns = "dev.lumen"
+[identity.ids.windows]
+app_user_model_id = "dev.lumen.Lumen"
+msi_upgrade_code = "7c1f6a52-9d3e-4b8a-a001-3f9c2d64e701"   # [PROPOSAL] generate once, then frozen
+[identity.ids.macos]
+bundle_id = "dev.lumen.Lumen"
+[identity.ids.linux]
+appstream_id = "dev.lumen.Lumen"
+[identity.ids.web]
+app_id = "dev.lumen.Lumen"
+[window]
+width = 1280                  # schema 480..=3840
+height = 720                  # schema 320..=2160
+min_width = 940               # schema: min_width < width; = UI floor
+min_height = 600              # schema: min_height < height; = UI floor
+start_maximized = false
+remember_geometry = true
+title_template = "{media_title} — {product_name}"
+title_idle_key = "window.title.idle"
+[brand]
+accent_color = "#4f8cff"
+icon_ico = "assets/brand/icon.ico"
+icon_icns = "assets/brand/icon.icns"
+icon_png_512 = "assets/brand/icon-512.png"
+logo_svg = "assets/brand/logo.svg"
+[defaults]
+theme = "dark"
+locale = "en-US"
+profile = "default"
+[telemetry]
+enabled = false               # schema: bool, shipped default false — hard rule
+crash_reports = "off"
+usage_stats = false
+update_checks = false
+[features]
+core-playback = true            # session open/play/pause/seek/stop of local files
+local-file = true               # file:// source access
+audio-output = true             # default audio device output
+video-render = true             # video presentation (video-in-webview prototype, MP §7)
+track-selection = true          # tracks.set-*-track over available streams
+config-surface = true           # config.get/set/reset-setting + settings UI
+playlists = false               # Phase 4
+library = false                 # Phase 4
+streaming-http = true           # w31.3: the CLI/GUI open path serves http(s) through the streami

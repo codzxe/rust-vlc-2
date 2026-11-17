@@ -88,6 +88,10 @@ typed error, a concealed prefix/frame, or a skipped packet (D-3/D-9).
 | `fuzz_demux_mpd`       | `streaming::dash::fuzz::fuzz_demux_mpd`        | DASH MPD (6.C1) |
 | `fuzz_hls_playlist`    | `playlists::fuzz::fuzz_playlist_m3u` + `netfuzz::fuzz_hls_playlist` (`#[path]` from `crates/streaming/tests/netfuzz/fuzz.rs`) | HLS interpretation stack (issue #14 M2 / 6.F3) |
 | `fuzz_http_headers`    | `streaming::mockhttp::fuzz_response_head` + `netfuzz::fuzz_http_headers` (`#[path]` from `crates/streaming/tests/netfuzz/fuzz.rs`) | HTTP response head (issue #14 M2 / 6.F3) |
+| `fuzz_uri_source`      | `input::fuzz::fuzz_uri_source`                 | Source URI parse + `file:` resolution (audit 4-boundary fix) |
+| `fuzz_control_frame`   | `control_protocol::fuzz::fuzz_control_frame`   | Control-protocol wire: frames, upgrade head, close payload, assembler (audit 4-boundary fix) |
+| `fuzz_settings_toml`   | `product_config::fuzz::fuzz_settings_toml` + `settings_schema::fuzz::fuzz_schema_dsl` | Settings TOML loader + schema DSL parser (audit 4-boundary fix) |
+| `fuzz_plugin_package`  | `plugin_host_wasm::fuzz::fuzz_plugin_package`  | `.lumenext` package intake: zip + manifest + provenance + signature (audit 4-boundary fix) |
 
 Not yet registered (no landed parser — doc 04's tables stay the
 contract): ASF, RealMedia, m4v, tx3g, CAF demuxers; Opus/AC-3/DTS/

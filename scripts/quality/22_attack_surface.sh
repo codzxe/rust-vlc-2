@@ -41,6 +41,11 @@ PREFIX = {
     "fuzz_playlist": "playlists (m3u/pls/cue/xspf)",
     "fuzz_hls": "streaming (HLS/manifests/HTTP)",
     "fuzz_http": "streaming (HLS/manifests/HTTP)",
+    # the 2026-11-17 boundary-gap closures (each row below had 0 targets)
+    "fuzz_uri": "source URI",
+    "fuzz_settings": "settings (TOML)",
+    "fuzz_control": "control protocol",
+    "fuzz_plugin": "wasm plugin ABI",
 }
 
 fuzz = {b: [] for b, _, _ in BOUNDARIES}

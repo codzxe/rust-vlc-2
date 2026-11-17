@@ -61,6 +61,7 @@ pub mod base64;
 pub mod client;
 pub mod error;
 pub mod frame;
+pub mod fuzz;
 pub mod http;
 pub mod policy;
 pub mod protocol;

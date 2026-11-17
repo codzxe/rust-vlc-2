@@ -1,0 +1,14 @@
+[areas]
+known = ["playback"]
+
+[[setting]]
+key = "playback.subtitle-mode"
+type = "enum"
+enumeration = ["auto", "off"]
+default = "auto"
+description = "settings.playback.subtitle-mode"
+restart_required = false
+placement = { screen = "playback", section = "tracks", order = 10, ui = true }
+cli = { flag = "--playback-subtitle-mode", short = "" }
+feature_gate = ""
+since = "0.1.0"

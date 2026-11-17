@@ -52,6 +52,14 @@ playlists = { path = "../crates/playlists" }
 # streaming (card 6.C1c): the DASH MPD target's in-crate harness
 # lives at streaming::dash::fuzz (parse + bounded 6.C1b resolution).
 streaming = { path = "../crates/streaming" }
+# The audit's 4 unfuzzed boundaries (attack-surface gaps, closed
+# 2026-11-17): source URI, settings TOML, control protocol, wasm
+# plugin ABI. Same in-crate-harness convention as the rows above.
+input = { path = "../crates/input" }
+control-protocol = { path = "../crates/control-protocol" }
+product-config = { path = "../crates/product-config" }
+settings-schema = { path = "../crates/settings-schema" }
+plugin-host-wasm = { path = "../crates/plugin-host-wasm" }
 
 # Release-mode fuzzing keeps overflow checks: integer overflow in a
 # decoder walking attacker bytes is a finding, not noise. (cargo-fuzz
@@ -315,6 +323,34 @@ bench = false
 [[bin]]
 name = "fuzz_http_headers"
 path = "fuzz_targets/fuzz_http_headers.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_uri_source"
+path = "fuzz_targets/fuzz_uri_source.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_control_frame"
+path = "fuzz_targets/fuzz_control_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_settings_toml"
+path = "fuzz_targets/fuzz_settings_toml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_plugin_package"
+path = "fuzz_targets/fuzz_plugin_package.rs"
 test = false
 doc = false
 bench = false
