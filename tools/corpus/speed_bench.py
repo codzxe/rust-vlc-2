@@ -40,6 +40,82 @@ from pathlib import Path
 FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
 FFPROBE = os.environ.get("FFPROBE", "ffprobe")
 
+# Media extensions used when benching a manifest-less fixture directory.
+# NOTE: .ts is MPEG-TS here; this tool is only pointed at media trees by
+# 27_speed_parity.sh (which prunes the TypeScript `ui/` tree).
+MEDIA_EXT = {".mp4", ".mkv", ".ts", ".ps", ".avi", ".ogg", ".ogv", ".wav",
+             ".aiff", ".aif", ".aac", ".ivf", ".flac", ".mp3", ".mp2",
+             ".m4a", ".mov", ".webm"}
+
+# format_name token -> canonical container label (ffprobe reports e.g.
+# "mov,mp4,m4a,3gp,3g2,mj2"; the first token alone would read "mov").
+_CONTAINER = {"mp4": "mp4", "mkv": "mkv", "matroska": "mkv", "webm": "webm",
+              "avi": "avi", "wav": "wav", "mp3": "mp3", "flac": "flac",
+              "ogg": "ogg", "aac": "aac", "mpegts": "ts", "aiff": "aiff",
+              "ivf": "ivf", "asf": "asf", "mov": "mov", "mp2": "mp2",
+              "mpeg": "mpeg", "ps": "ps"}
+
+
+def normalize_container(format_name: str) -> str:
+    for tok in format_name.split(","):
+        tok = tok.strip().lower()
+        if tok in _CONTAINER:
+            return _CONTAINER[tok]
+    return (format_name.split(",")[0].strip() or "unknown").lower()
+
+
+def probe_media(path: Path) -> tuple[bool, str, str]:
+    """(is_media, container, 'video'|'audio') via ffprobe - the same
+    oracle the generated-corpus manifest trusts (its ffprobe_ok flag)."""
+    p = sh([FFPROBE, "-v", "error", "-show_entries",
+            "format=format_name:stream=codec_type", "-of", "json",
+            str(path)], 120)
+    try:
+        j = json.loads(p.stdout)
+        streams = j.get("streams", [])
+        if p.returncode != 0 or not streams:
+            return False, "?", "?"
+        kinds = {s.get("codec_type") for s in streams}
+        kind = "video" if "video" in kinds else "audio"
+        return True, normalize_container(j.get("format", {}).get("format_name", "?")), kind
+    except Exception:
+        return False, "?", "?"
+
+
+def load_clean_files(corpus: Path, classes_filter: str | None,
+                     count: int, stride: int) -> list[dict]:
+    """Manifest-ledger corpora (gen_corpus.py output) and plain fixture
+    directories both resolve to the same `clean` list of
+    {rel, class, bytes} entries. Manifest-less dirs verify every file
+    with ffprobe (nothing unverified is ever benched) and classify by
+    container + stream kind."""
+    manifest_path = corpus / "manifest.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+        clean = [f for f in manifest["files"]
+                 if f["rel"].startswith("media/") and f.get("ffprobe_ok")]
+        clean = [{"rel": f["rel"], "class": f["class"], "bytes": f["bytes"]}
+                 for f in clean]
+    else:
+        clean = []
+        for p in sorted(corpus.rglob("*")):
+            if not p.is_file() or p.suffix.lower() not in MEDIA_EXT:
+                continue
+            try:
+                size = p.stat().st_size
+            except OSError:
+                continue
+            if size <= 0:
+                continue
+            ok, container, kind = probe_media(p)
+            if ok:
+                clean.append({"rel": str(p.relative_to(corpus)).replace("\\", "/"),
+                              "class": f"{container}-{kind}", "bytes": size})
+    if classes_filter:
+        keep = set(classes_filter.split(","))
+        clean = [f for f in clean if f["class"] in keep]
+    return clean[::stride][:count]
+
 
 def sh(cmd: list[str], timeout: int):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -115,13 +191,7 @@ def main() -> int:
     args = ap.parse_args()
 
     corpus = Path(args.corpus)
-    manifest = json.loads((corpus / "manifest.json").read_text())
-    clean = [f for f in manifest["files"]
-             if f["rel"].startswith("media/") and f.get("ffprobe_ok")]
-    if args.classes:
-        keep = set(args.classes.split(","))
-        clean = [f for f in clean if f["class"] in keep]
-    clean = clean[::args.stride][:args.count]
+    clean = load_clean_files(corpus, args.classes, args.count, args.stride)
     if not clean:
         print("no clean media files to bench", file=sys.stderr)
         return 2

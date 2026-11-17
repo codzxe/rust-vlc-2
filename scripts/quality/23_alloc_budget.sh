@@ -32,7 +32,10 @@ root, n = sys.argv[1], int(sys.argv[2])
 EXT = {".mp4",".mkv",".ts",".ogg",".wav",".aiff",".avi",".flac",".mp3",".aac",".ivf",".mpd",".m3u",".pls",".cue",".xspf",".srt",".ass",".vtt"}
 found = []
 for dp, dn, fns in os.walk(root):
-    dn[:] = [d for d in dn if d not in ("target","node_modules",".git")]
+    # `ui` is the TypeScript app tree: its .ts sources collide with the
+    # MPEG-TS extension; pruning it keeps the sample real media (plus the
+    # deliberate playlist/subtitle text formats in EXT).
+    dn[:] = [d for d in dn if d not in ("target","node_modules",".git","ui")]
     for fn in sorted(fns):
         ext = os.path.splitext(fn)[1].lower()
         if ext in EXT:

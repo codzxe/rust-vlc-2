@@ -53,7 +53,10 @@ EXT = {".mp4",".mkv",".ts",".ps",".avi",".ogg",".ogv",".wav",".aiff",".aif",
        ".aac",".ivf",".flac",".mp3",".mp2",".m4a",".mov",".webm"}
 dirs = set()
 for dp, dns, fns in os.walk(root):
-    dns[:] = [d for d in dns if d not in ("target","node_modules",".git")]
+    # `ui` is the TypeScript app tree: its .ts sources collide with the
+    # MPEG-TS extension and are not media corpora. Real .ts fixtures live
+    # under tests/fixtures and fuzz/corpus and stay discovered.
+    dns[:] = [d for d in dns if d not in ("target","node_modules",".git","ui")]
     for fn in fns:
         if os.path.splitext(fn)[1].lower() in EXT:
             dirs.add(os.path.relpath(dp, root).replace("\\","/"))

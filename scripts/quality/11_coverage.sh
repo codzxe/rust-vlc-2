@@ -15,11 +15,16 @@ not_run "coverage:platform-linux" "test target does not compile off Linux (F-001
 not_run "coverage:platform-macos" "test target does not compile off macOS (F-001)"
 
 head1 "11a. suite summary (JSON + LCOV)"
+# cargo-llvm-cov rejects --output-path given twice (one path per invocation),
+# so the run emits JSON and the LCOV report is regenerated from the same
+# cached profdata - no second test run.
 cargo llvm-cov nextest --workspace --all-features "${EXCLUDES[@]}" \
   --json --output-path "$OUT/cov.json" \
-  --lcov --output-path "$OUT/lcov.info" \
   2>&1 | tee "$OUT/coverage.log" | tail -30
 say "exit=$?"
+cargo llvm-cov report --lcov --output-path "$OUT/lcov.info" \
+  2>&1 | tail -3
+say "lcov: $(wc -l < "$OUT/lcov.info" 2>/dev/null || echo 0) lines"
 
 head1 "11b. per-crate summary"
 : > "$OUT/coverage-per-crate.txt"

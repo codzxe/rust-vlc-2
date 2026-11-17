@@ -5,7 +5,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 head1 "13a. nextest test inventory"
 if need cargo-nextest; then
-  cargo nextest list --workspace --all-features --format json \
+  # cargo-nextest's list subcommand takes --message-format (json|human);
+  # --format is not a flag and cargo rejects it before nextest ever runs.
+  cargo nextest list --workspace --all-features --message-format json \
     > "$OUT/tests.json" 2> "$OUT/tests-list.err" \
     && say "tests: $(grep -c '"name"' "$OUT/tests.json" 2>/dev/null || echo '?')" \
     || not_run "nextest list" "$(head -3 "$OUT/tests-list.err" | tr '\n' ' ')"

@@ -45,9 +45,9 @@ run_level() {
   grep -o '#\[warn([a-z_:0-9]*)\]' "$logf" 2>/dev/null | sed 's/#\[warn(//;s/)\]//' | sort | uniq -c | sort -rn | head -40
 }
 
-run_level L0 -D warnings
-run_level L1 "${CLIPPY_LINTS_WARN[@]}"
-run_level L2 -W clippy::nursery
+run_level L0 -- -D warnings
+run_level L1 -- "${CLIPPY_LINTS_WARN[@]}"
+run_level L2 -- -W clippy::nursery
 
 # L3 is per-crate only: workspace-wide it drowns in noise by design.
 if [ ${#TARGETS[@]} -eq 0 ]; then
@@ -55,7 +55,7 @@ if [ ${#TARGETS[@]} -eq 0 ]; then
   for c in "${HOT[@]}"; do
     if ! ( cd "$ROOT" && cargo metadata --no-deps --format-version 1 >/dev/null 2>&1 ); then break; fi
     head1 "clippy L3 $c"
-    cargo clippy -p "$c" --all-targets --all-features "${CLIPPY_LINTS_RESTRICT[@]}" 2>&1 \
+    cargo clippy -p "$c" --all-targets --all-features -- "${CLIPPY_LINTS_RESTRICT[@]}" 2>&1 \
       | tee "$OUT/clippy-L3-$c.log" >/dev/null
     grep -o '#\[warn([a-z_:0-9]*)\]' "$OUT/clippy-L3-$c.log" 2>/dev/null \
       | sed 's/#\[warn(//;s/)\]//' | sort | uniq -c | sort -rn | head -15

@@ -35,7 +35,7 @@ case "$cmd" in
       not_run "miri" "nightly toolchain required (blocker B3); cargo miri available but needs +nightly"
     fi
     ;;
-  asan|ubsan|tsan)
+  asan|tsan)
     head1 "$cmd lane (nightly, Linux)"
     case "$(uname -s)" in
       Linux) : ;;
@@ -44,9 +44,36 @@ case "$cmd" in
     if ! rustup toolchain list 2>/dev/null | grep -q nightly; then
       not_run "$cmd" "nightly toolchain required (blocker B3)"; exit 0
     fi
-    san="$cmd"
+    # rustc has no `asan`/`tsan` sanitizer values - the real names are
+    # `address` and `thread` (verified: rustc +nightly -Zsanitizer=xyz).
+    case "$cmd" in asan) san=address ;; tsan) san=thread ;; esac
+    # -p <crate> when given (the lane's contract; the caller names the C-ABI
+    # crate), else the workspace with the documented F-001/F-002 exclusions.
+    if [ -n "$crate" ]; then SCOPE=(-p "$crate"); else SCOPE=("${EXCL[@]}"); fi
     RUSTFLAGS="-Zsanitizer=$san" cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu \
-      "${EXCL[@]}" --all-features 2>&1 | tee "$OUT/ub/$cmd.log" | tail -30
+      "${SCOPE[@]}" --all-features 2>&1 | tee "$OUT/ub/$cmd.log" | tail -30
+    ;;
+  ubsan)
+    head1 "ubsan lane (nightly, Linux)"
+    case "$(uname -s)" in
+      Linux) : ;;
+      *) not_run "ubsan" "sanitizers are Linux-only; host is $(uname -s)"; exit 0 ;;
+    esac
+    if ! rustup toolchain list 2>/dev/null | grep -q nightly; then
+      not_run "ubsan" "nightly toolchain required (blocker B3)"; exit 0
+    fi
+    # rustc has no -Zsanitizer=undefined (valid values are address, cfi,
+    # dataflow, hwaddress, kcfi, kernel-address, kernel-hwaddress, leak,
+    # memory, memtag, safestack, shadow-call-stack, thread, realtime).
+    # The native equivalent is -Zub-checks + explicit overflow checks, with
+    # -Zbuild-std so precompiled std is rebuilt instrumented too - without
+    # build-std every locally-compiled crate already runs under
+    # debug-assertions (ub-checks defaults to it) and the lane would add
+    # nothing over a normal test run (the cargo-careful insight).
+    if [ -n "$crate" ]; then SCOPE=(-p "$crate"); else SCOPE=("${EXCL[@]}"); fi
+    RUSTFLAGS="-Zub-checks=yes -Zoverflow-checks=yes" \
+      cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu \
+      "${SCOPE[@]}" --all-features 2>&1 | tee "$OUT/ub/ubsan.log" | tail -30
     ;;
   *)
     say "usage: 18_ub_checks.sh {overflow|careful|miri|asan|ubsan|tsan} [crate]"
