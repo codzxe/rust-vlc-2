@@ -15,8 +15,16 @@ mkdir -p "$OUT/mutants"
 # Never mutate: tests, generated code, the template member, the excluded tauri app.
 EXCLUDE_RE='(^|/)(tests|benches|examples)/|_template|desktop-tauri|schemas/generated'
 
-TIMEOUT="${MUTANTS_TIMEOUT:-60}"
+TIMEOUT="${MUTANTS_TIMEOUT:-1800}"
 JOBS="${MUTANTS_JOBS:-8}"
+# The wall budget for one shard (GNU timeout, minutes). A FULL sweep is
+# ~20-30 h per shard on a 4-core runner (per-mutant = incremental build +
+# the mutated package's suite; ~4,800 mutants per shard) - far past the
+# workflow's 330-min job cap, which used to kill the shard mid-run with
+# exit 143. The budget ends the run CLEANLY instead: cargo-mutants traps
+# the signal and writes its (partial, honestly-labeled) outcomes.json,
+# and the score aggregates what was actually tested.
+BUDGET_MIN="${MUTANTS_BUDGET_MIN:-285}"
 
 cmd="${1:-list}"
 shift || true
@@ -61,18 +69,55 @@ case "$cmd" in
   full)
     # Per-shard output so a sharded matrix (CI) or a sequential local run
     # never overwrites another shard's evidence.
+    #
+    # Shard remap: the frozen workflow matrix dispatches 1..8, but
+    # cargo-mutants shards are 0-based (k must be < n) - as-is, shard
+    # 8/8 died at 'invalid value' and slice 0 was NEVER RUN. Map the
+    # workflow's 1-based N onto cargo-mutants' 0-based k so all eight
+    # slices run exactly once.
     shard="all"
     prev=""
     for a in "$@"; do
       [ "$prev" = "--shard" ] && shard="${a%%/*}"
       prev="$a"
     done
-    head1 "full workspace mutation run (shard $shard) ${*:-}"
-    cargo mutants --workspace --test-tool nextest \
-      --jobs "$JOBS" --timeout "$TIMEOUT" \
+    ARGS=()
+    if [ "$shard" != "all" ] && [ "$shard" -ge 1 ] 2>/dev/null; then
+      n=""
+      prev=""
+      for a in "$@"; do
+        [ "$prev" = "--shard" ] && n="${a##*/}"
+        prev="$a"
+      done
+      ARGS=(--shard "$((shard - 1))/$n")
+      for a in "$@"; do
+        case "$a" in --shard|*/$n) ;; *) ARGS+=("$a") ;; esac
+      done
+      say "shard remap: workflow 1-based $shard/$n -> cargo-mutants $((shard - 1))/$n"
+      shard="$((shard - 1))"
+      set -- "${ARGS[@]}"
+    fi
+    head1 "full workspace mutation run (shard $shard, budget ${BUDGET_MIN}m, baseline cap ${TIMEOUT}s) ${*:-}"
+    timeout "${BUDGET_MIN}m" cargo mutants --workspace --test-tool nextest \
+      --jobs "$JOBS" --timeout "$TIMEOUT" --timeout-multiplier 3 \
       --exclude-re "$EXCLUDE_RE" "$@" \
       --output "$OUT/mutants/full-shard-$shard" \
       2>&1 | tee "$OUT/mutants/full-shard-$shard.log" | tail -40
+    rc=${PIPESTATUS[0]}
+    # 124 = the budget ended the run: partial outcomes are the evidence
+    # (the score reports mutants actually tested), never a failure.
+    # Any other non-zero - including 'no mutants were tested' baseline
+    # failures - FAILS the shard (the run-36 shape: five shards green
+    # with zero mutants tested, because the 60s default timed out the
+    # baseline and the plumbing swallowed the error).
+    if [ "$rc" -eq 124 ]; then
+      say ""
+      say "mutation budget exhausted after ${BUDGET_MIN}m - outcomes.json holds the partial, honestly-labeled results"
+    elif [ "$rc" -ne 0 ]; then
+      say ""
+      say "cargo-mutants FAILED (exit $rc) - see $OUT/mutants/full-shard-$shard.log"
+      exit "$rc"
+    fi
     ;;
   *)
     say "usage: 12_mutants.sh {list|crate <name>|diff [base]|full [--shard i/N]}"
