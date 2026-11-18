@@ -45,7 +45,21 @@ SUMMARY="$OUT/fuzz/campaign/summary.txt"
 export RUSTUP_TOOLCHAIN=nightly
 HOST_TRIPLE="$(rustc -vV | awk '/^host:/ {print $2}')"
 
+# Is this target's crash a REGISTERED third-party panic site?
+# Reads the panic out of the campaign log and asks known_upstream.py
+# for an exact (crate, location, message) registry match. Exits 0
+# (known) / 1 (not known / unparseable). No panic in the log = 1:
+# an artifact without a panic message is a sanitizer finding (LSan,
+# OOM, timeout) and never qualifies for the registry.
+classify_known_upstream() {
+  local target="$1" log="$2"
+  python3 "$(dirname "${BASH_SOURCE[0]}")/known_upstream.py" \
+    --target "$target" --log "$log" \
+    --registry "$(dirname "${BASH_SOURCE[0]}")/../../fuzz/known-upstream.json"
+}
+
 crashes=0
+known_upstream=0
 build_failures=0
 for t in "${TARGETS[@]}"; do
   say ""
@@ -60,8 +74,19 @@ for t in "${TARGETS[@]}"; do
     cp -r "fuzz/artifacts/$t/." "$OUT/fuzz/campaign/artifacts-$t/" 2>/dev/null || true
   fi
   if [ "$arts" -gt 0 ]; then
-    crashes=$((crashes + 1))
-    say "CRASH: $arts artifact(s) -> fuzz/artifacts/$t/ (kept in reports)"
+    # A crash on a REGISTERED third-party panic site closes as
+    # known-upstream (see fuzz/known-upstream.json for why libFuzzer
+    # cannot contain these in-process). The classifier requires the
+    # panic path to live under .cargo/registry - workspace code can
+    # never be allowlisted - and the crate+location+message to match
+    # a registry entry exactly. Everything else stays a hard crash.
+    if classify_known_upstream "$t" "$log"; then
+      known_upstream=$((known_upstream + 1))
+      say "KNOWN-UPSTREAM (registered third-party panic site) - $arts artifact(s) kept in reports"
+    else
+      crashes=$((crashes + 1))
+      say "CRASH: $arts artifact(s) -> fuzz/artifacts/$t/ (kept in reports)"
+    fi
   elif [ "$rc" -ne 0 ]; then
     # A non-zero run WITHOUT a crash artifact is a build/infra failure
     # (the run-35 shape) - never "clean". It must fail the campaign or
@@ -71,12 +96,26 @@ for t in "${TARGETS[@]}"; do
   else
     say "clean (exit=$rc)"
   fi
-  printf '%-28s exit=%-3s artifacts=%s\n' "$t" "$rc" "$arts" >> "$SUMMARY"
+  if [ "$arts" -gt 0 ] && classify_known_upstream "$t" "$log"; then
+    status="known-upstream"
+  elif [ "$arts" -gt 0 ]; then
+    status="CRASH"
+  elif [ "$rc" -ne 0 ]; then
+    status="BUILD/RUN FAILURE"
+  else
+    status="clean"
+  fi
+  printf '%-28s exit=%-3s artifacts=%-3s %s\n' "$t" "$rc" "$arts" "$status" >> "$SUMMARY"
 done
 
 head1 "campaign result"
 cat "$SUMMARY"
 say ""
-say "$crashes of ${#TARGETS[@]} targets produced artifacts; $build_failures failed to build/run"
+say "$crashes of ${#TARGETS[@]} targets produced UNREGISTERED artifacts; $known_upstream closed as known-upstream (see fuzz/known-upstream.json); $build_failures failed to build/run"
+if [ "$known_upstream" -gt 0 ]; then
+  say ""
+  say "known-upstream sites closed on this run:"
+  python3 "$(dirname "${BASH_SOURCE[0]}")/known_upstream.py" --list
+fi
 say "written: $SUMMARY"
 [ "$crashes" -eq 0 ] && [ "$build_failures" -eq 0 ]

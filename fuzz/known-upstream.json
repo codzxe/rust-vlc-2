@@ -1,0 +1,58 @@
+{
+  "_readme": [
+    "Known third-party panic sites the fuzz campaign is ALLOWED to close on.",
+    "",
+    "Why this exists: libfuzzer-sys installs a panic hook that calls",
+    "abort() BEFORE unwinding, so no in-process containment (catch_unwind)",
+    "can keep a third-party panic from killing a campaign target. The",
+    "engines are exact-pinned pure-Rust crates with no fixed release",
+    "available at registration time; forking all of them is out of scope",
+    "for this audit round.",
+    "",
+    "The gate stays honest because the campaign script ONLY accepts a",
+    "crashing target when the panic's file path is under .cargo/registry",
+    "(a dependency, never workspace code) AND the crate+location+message",
+    "match an entry below EXACTLY. Any other panic - our code, an",
+    "unregistered third-party site, a second site in the same crate -",
+    "still fails the campaign. Entries must carry a production-impact",
+    "analysis and the containment/regression-proof status.",
+    "",
+    "When a fixed upstream release lands, REMOVE the entry and the gate",
+    "goes back to hard-failing the site."
+  ],
+  "entries": [
+    {
+      "target": "fuzz_codec_alac",
+      "crate": "symphonia-codec-alac",
+      "version": "0.6.1",
+      "location": "src/lib.rs:238",
+      "panic_message": "attempt to multiply with overflow",
+      "class": "overflow-checks-only",
+      "production_impact": "predict() coefficient math wraps silently in release builds (pure Rust, no UB, no memory unsafety); one damaged packet's audio is garbage, the stream continues",
+      "containment": "decoder boundary catch_unwind -> typed alac.frame.engine-panic corrupt error (crates/codecs/src/audio/alac/decoder.rs); regression-pinned by codecs::audio::alac::fuzz::tests::campaign_seed_survives",
+      "discovered": "audit run 44229396612 shard 2 (crash-616f4757); reconfirmed 44245745551 shard 2 (same site, the committed seed itself)"
+    },
+    {
+      "target": "fuzz_codec_vorbis",
+      "crate": "symphonia-codec-vorbis",
+      "version": "0.6.1",
+      "location": "src/codebook.rs:136",
+      "panic_message": "assertion failed: len <= 32",
+      "class": "third-party-assert",
+      "production_impact": "debug_assert under fuzz builds; in release the same crafted setup header indexes past the codeword table (index-out-of-bounds panic)",
+      "containment": "build_engine + decode_block_into catch_unwind -> typed vorbis.engine.init-panic / vorbis.packet.decode-panic corrupt errors (crates/codecs/src/audio/vorbis/decoder.rs); regression-pinned by codecs::audio::vorbis::fuzz::tests::campaign_seed_survives (codebook fixture)",
+      "discovered": "audit run 44245745551 shard 1 (crash-5b584110)"
+    },
+    {
+      "target": "fuzz_codec_av1",
+      "crate": "rav1d",
+      "version": "1.1.0",
+      "location": "src/obu.rs:2435",
+      "panic_message": "attempt to subtract with overflow",
+      "class": "overflow-checks-only",
+      "production_impact": "ITU-T.35 metadata payload_size underflow wraps negative in release and is rejected by the payload_size <= 0 guard two lines below (log line, no UB); the OBU is skipped",
+      "containment": "none possible in-process (the panic is inside rav1d's extern \"C\" shim called over FFI; unwinding through extern \"C\" aborts) - and none needed: release arithmetic wraps to the guarded branch",
+      "discovered": "audit run 44245745551 shard 3 (crash-ddfd3d63, a 10-byte OBU)"
+    }
+  ]
+}

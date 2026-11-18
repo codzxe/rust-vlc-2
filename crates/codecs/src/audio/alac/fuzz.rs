@@ -127,13 +127,16 @@ mod tests {
 
     #[test]
     fn campaign_seed_survives() {
-        // The committed campaign seed (crash-616f4757 for `fuzz_codec_alac`) —
-        // the first honest fuzz run (audit run 44229396612) crashed
-        // on exactly this input (third-party symphonia predict overflow, contained at the decoder boundary). The seed is pinned so every
-        // run re-proves the fix.
-        let seed = include_bytes!(
-            "../../../../../fuzz/corpus/fuzz_codec_alac/crash-616f47570e47e3d50c19dd0200a23e38fcfd096d"
-        );
+        // The campaign crash input (crash-616f4757 for
+        // `fuzz_codec_alac`) — the first honest fuzz run (audit run
+        // 44229396612) crashed on exactly this input (third-party
+        // symphonia predict overflow, contained at the decoder
+        // boundary since). The input lives as a TEST FIXTURE, not a
+        // corpus seed: libFuzzer aborts on any panic before unwinding
+        // (libfuzzer-sys's hook), so a panic-triggering seed would
+        // abort the whole campaign at corpus load — its site is
+        // tracked in fuzz/known-upstream.json instead.
+        let seed = include_bytes!("tests/symphonia_predict_overflow.bin");
         fuzz_codec_alac(seed);
     }
 }

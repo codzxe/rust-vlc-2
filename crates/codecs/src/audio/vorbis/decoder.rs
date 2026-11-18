@@ -247,12 +247,29 @@ fn build_engine(headers: &VorbisHeaders) -> Result<Engine, VorbisError> {
     // Gapless stays OFF: the Ogg granule clock — not the engine —
     // owns Vorbis positioning (see the module docs).
     opts.gapless = false;
-    match Engine::try_new(&params, &opts) {
-        Ok(engine) => Ok(engine),
-        Err(err) => Err(corrupt(
+    // Fuzz-found (fuzz_codec_vorbis, crash-5b584110): symphonia-
+    // codec-vorbis 0.6.1's codebook reader debug-asserts `len <= 32`
+    // on crafted setup headers (its codebook.rs:136) — and with
+    // debug assertions off, the same input indexes past the codeword
+    // table. Init is the boundary; the panic is contained as a typed
+    // corrupt error (the alac decoder's predict containment policy).
+    // The fuzz campaign's libFuzzer aborts before unwinding
+    // (libfuzzer-sys's panic hook), so its gate tracks this site via
+    // fuzz/known-upstream.json; this containment serves unwind
+    // builds — the player.
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        Engine::try_new(&params, &opts)
+    })) {
+        Ok(Ok(engine)) => Ok(engine),
+        Ok(Err(err)) => Err(corrupt(
             "vorbis.engine.init",
             media_types::error::CorruptDetail::InvalidStructure { offset: None },
             format!("engine refused the header chain: {err}"),
+        )),
+        Err(_) => Err(corrupt(
+            "vorbis.engine.init-panic",
+            media_types::error::CorruptDetail::InvalidStructure { offset: None },
+            "the Vorbis engine panicked on this header chain (symphonia codebook, contained)",
         )),
     }
 }
@@ -271,27 +288,50 @@ pub(crate) fn decode_block_into(
     dst: &mut [u8],
 ) -> Result<usize, VorbisError> {
     let pkt = PacketRef::new(0, SymTimestamp::ZERO, SymDuration::ZERO, packet);
-    let decoded = match engine.decode_ref(&pkt) {
-        Ok(buf) => buf,
-        Err(err) => {
+    // The decode + copy seam is engine-panic contained for the same
+    // reason as init (see build_engine): symphonia's vorbis paths
+    // hold more debug-asserted invariants than release builds
+    // enforce. The borrowed buffer stays inside the closure; only
+    // the owned shape crosses.
+    let (frames, channels) = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let decoded = match engine.decode_ref(&pkt) {
+            Ok(buf) => buf,
+            Err(err) => {
+                return Err(corrupt(
+                    "vorbis.packet.decode",
+                    media_types::error::CorruptDetail::InvalidStructure { offset: None },
+                    format!("engine rejected the audio packet: {err}"),
+                ));
+            }
+        };
+        let frames = decoded.frames();
+        let channels = decoded.spec().channels().count();
+        let need = frames * channels;
+        if scratch.len() < need {
+            scratch.resize(need, 0.0);
+        }
+        decoded.copy_to_slice_interleaved::<f32, _>(&mut scratch[..need]);
+        Ok::<(usize, usize), VorbisError>((frames, channels))
+    })) {
+        Ok(Ok((frames, channels))) => (frames, channels),
+        Ok(Err(err)) => {
             // One-block poison boundary: drop the overlap state so the
             // next packet decodes from a clean window (doc 03 §4.5(d),
             // the overlap-scoped honest variant).
             engine.reset();
+            return Err(err);
+        }
+        Err(_) => {
+            // The same poison boundary for the contained-panic arm.
+            engine.reset();
             return Err(corrupt(
-                "vorbis.packet.decode",
+                "vorbis.packet.decode-panic",
                 media_types::error::CorruptDetail::InvalidStructure { offset: None },
-                format!("engine rejected the audio packet: {err}"),
+                "the Vorbis engine panicked on this audio packet (contained)",
             ));
         }
     };
-    let frames = decoded.frames();
-    let channels = decoded.spec().channels().count();
     let need = frames * channels;
-    if scratch.len() < need {
-        scratch.resize(need, 0.0);
-    }
-    decoded.copy_to_slice_interleaved::<f32, _>(&mut scratch[..need]);
     let byte_len = need * 4;
     if dst.len() < byte_len {
         return Err(corrupt(
