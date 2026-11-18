@@ -48,7 +48,16 @@ env:
   RUST_BACKTRACE: "1"
 
 concurrency:
-  group: audit-${{ github.ref }}-${{ github.event.schedule || 'manual' }}
+  # One slot PER TIER (the audit program's tiers are independent
+  # lanes; driving them concurrently is the point of workflow_dispatch).
+  # Scheduled runs share the event-name slot (a single nightly run
+  # carries all its tiers); PRs keep their own group with
+  # cancel-in-progress so a force-push supersedes the stale static
+  # scan. The previous single 'manual' group let each new dispatch
+  # replace the previous pending tier — 7 of 9 concurrent tier
+  # dispatches were silently cancelled by the queue (observed
+  # 2026-11-18, runs 44245745551..44245799715).
+  group: audit-${{ github.ref }}-${{ inputs.tier || github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
