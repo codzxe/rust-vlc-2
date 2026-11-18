@@ -25,6 +25,15 @@ JOBS="${MUTANTS_JOBS:-8}"
 # the signal and writes its (partial, honestly-labeled) outcomes.json,
 # and the score aggregates what was actually tested.
 BUDGET_MIN="${MUTANTS_BUDGET_MIN:-285}"
+# Tests excluded from MUTATION runs only (nextest filterset, appended
+# after cargo-mutants' `--` passthrough). The IVF family lanes are
+# wall-clock-paced e2e rows: their Playing-boundary assertion holds on
+# an idle gate runner but flakes under a mutation shard's 8-way load
+# (audit run 44263998011: 2 of 8 shard baselines died on
+# ivf_av1_family_lane racing to end-of-media - 1051 tests cancelled,
+# zero mutants tested). They still gate every CI push; mutation runs
+# just don't re-prove them per-mutant. Excluded by exact name.
+MUTANTS_TEST_FILTER='not(test(=ivf_av1_family_lane) | test(=ivf_vp9_family_lane))'
 
 cmd="${1:-list}"
 shift || true
@@ -108,6 +117,7 @@ case "$cmd" in
       --jobs "$JOBS" --timeout "$TIMEOUT" \
       --exclude-re "$EXCLUDE_RE" "$@" \
       --output "$OUT/mutants/full-shard-$shard" \
+      -- -E "$MUTANTS_TEST_FILTER" \
       2>&1 | tee "$OUT/mutants/full-shard-$shard.log" | tail -40
     rc=${PIPESTATUS[0]}
     # 124 = the budget ended the run: partial outcomes are the evidence
