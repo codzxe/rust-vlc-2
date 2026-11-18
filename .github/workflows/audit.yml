@@ -188,9 +188,16 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------- Tier 3 --
-  # Full mutation sweep, sharded. 38,276 mutants / 8 shards / 4 jobs per shard
-  # = ~2.5 h wall per shard (measured 1.81 s/mutant). 8 shards is deliberate:
-  # 2 shards would be 9.5 h and be killed by the 6 h runner cap.
+  # Full mutation sweep, sharded. 38,276 mutants / 8 shards / 8 jobs per shard.
+  # 8 shards is deliberate: 2 shards would be 9.5 h and be killed by the 6 h
+  # runner cap. The wall budget is 150 min/shard (MUTANTS_BUDGET_MIN below):
+  # 12_mutants.sh treats budget exhaustion as a CLEAN, labeled-partial end
+  # (outcomes.json holds what was actually tested), and on a day when the
+  # hosted-runner fleet kills ~half of all 4.75-hour jobs mid-run (observed
+  # 2026-11-18: five shards lost to runner shutdown signals / vanished log
+  # blobs across two rounds), the shorter window is the difference between a
+  # reproducible lane and a lottery. Rounds can simply be re-dispatched; the
+  # score aggregates whatever each shard actually tested.
   mutation:
     if: github.event.schedule == '0 3 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.tier == 'mutation')
     runs-on: ubuntu-latest
@@ -218,6 +225,8 @@ jobs:
 
       - name: Mutate shard ${{ matrix.shard }}/8
         run: bash scripts/quality/12_mutants.sh full --shard ${{ matrix.shard }}/8
+        env:
+          MUTANTS_BUDGET_MIN: "150"
 
       - uses: actions/upload-artifact@v4
         if: always()
