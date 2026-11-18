@@ -384,7 +384,14 @@ fn parse_picture(id: &str, payload: &[u8]) -> Id3Frame {
         i += 3;
         String::from_utf8_lossy(payload.get(1..4.min(payload.len())).unwrap_or(b"JPG")).to_string()
     } else {
-        let end = payload[i..]
+        // Fuzz-found (fuzz_codec_mp3 + fuzz_codec_mp2, same APIC
+        // path): an empty APIC payload made `payload[i..]` panic
+        // (range start 1 > len 0). `get` degrades a truncated frame
+        // to an empty mime instead of a panic; the len-clamped `i`
+        // keeps the remaining reads in range.
+        let end = payload
+            .get(i..)
+            .unwrap_or(&[])
             .iter()
             .position(|&b| b == 0)
             .map(|p| i + p)
@@ -407,7 +414,12 @@ fn parse_picture(id: &str, payload: &[u8]) -> Id3Frame {
         }
         (j + 2).min(payload.len())
     } else {
-        let end = payload[i..]
+        // Fuzz-found twin of the mime-branch panic (fuzz_codec_mp3,
+        // crash-c495eb09): after a truncated mime, `i` can sit past
+        // the payload end — `get` degrades to "no description".
+        let end = payload
+            .get(i..)
+            .unwrap_or(&[])
             .iter()
             .position(|&b| b == 0)
             .map(|p| i + p)

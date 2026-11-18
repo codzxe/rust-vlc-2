@@ -211,4 +211,20 @@ mod tests {
         let o = fuzz_mp3_stream(&[0xFF, 0xFB, 0x90, 0x00]);
         assert_eq!(o.frames, 0);
     }
+
+    #[test]
+    fn campaign_seeds_survive() {
+        // The committed campaign seeds for `fuzz_codec_mp3` and
+        // `fuzz_codec_mp2` (audit run 44229396612) — both crashed in
+        // the shared APIC parse (id3 parse_picture slice bounds).
+        // Pinned so every run re-proves the fix on both entry paths.
+        let mp3_seed = include_bytes!(
+            "../../../../../fuzz/corpus/fuzz_codec_mp3/crash-c495eb09ef3a3597fadd57c1f9c664698820dba1"
+        );
+        let mp2_seed = include_bytes!(
+            "../../../../../fuzz/corpus/fuzz_codec_mp2/crash-cf0db8476e9f99c71d2ff9418f15c7d857710d12"
+        );
+        let _ = fuzz_mp3_stream(mp3_seed);
+        let _ = fuzz_mp3_stream(mp2_seed);
+    }
 }

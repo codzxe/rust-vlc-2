@@ -575,9 +575,17 @@ pub fn plan_representation(
         } else {
             // … or the fixed-duration form (@duration covering the
             // whole period).
-            let duration = template.duration.ok_or(DashResolveError::MissingFact {
-                fact: "SegmentTemplate@duration",
-            })?;
+            // Fuzz-found (fuzz_demux_mpd): @duration="0" reached the
+            // count's `end / duration` and divided by zero. A zero
+            // duration carries no segment-extent fact — it resolves
+            // as the missing fact, not a panic.
+            let duration =
+                template
+                    .duration
+                    .filter(|d| *d > 0)
+                    .ok_or(DashResolveError::MissingFact {
+                        fact: "SegmentTemplate@duration",
+                    })?;
             let count = fixed_segment_count(mpd, period, timescale, duration)
                 .ok_or(DashResolveError::TimelineExtentUnknown)?;
             let mut slots = Vec::new();
@@ -731,6 +739,12 @@ fn period_duration_ticks(mpd: &Mpd, period: &Period, timescale: u64) -> Option<u
 /// The count of fixed-duration segments covering the period
 /// (ceil-division on ticks; None when the extent is unknown).
 fn fixed_segment_count(mpd: &Mpd, period: &Period, timescale: u64, duration: u64) -> Option<u64> {
+    // Defense in depth for the fuzz-found @duration="0" divide
+    // (see the call site): a zero step yields no count, never a
+    // division.
+    if duration == 0 {
+        return None;
+    }
     let end = period_duration_ticks(mpd, period, timescale)?;
     let count = end / duration + u64::from(end % duration != 0);
     if count == 0 { None } else { Some(count) }

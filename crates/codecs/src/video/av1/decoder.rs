@@ -467,10 +467,27 @@ impl Av1Decoder {
                 // above and not yet unref'd; the ABI takes the
                 // picture's references back through this pointer.
                 unsafe { dav1d_picture_unref(Some(NonNull::from(&mut pic))) };
+                Self::release_unref_residual(&mut pic);
                 emit?;
                 emitted += 1;
                 continue;
             }
+            // Fuzz-found (fuzz_codec_av1, LeakSanitizer, audit run
+            // 44229396612): rav1d 1.1.0's `dav1d_get_picture` shim
+            // writes `out` on the error paths too (its unconditional
+            // write — the `TODO(kkysen)` note in its src/lib.rs), so
+            // the picture we get back owns the default-constructed
+            // ITU-T.35 Arc (48 bytes) even when no frame was
+            // produced. Release it on every non-success exit — once
+            // per EAGAIN drain terminator, once per damaged frame —
+            // or it leaks.
+            //
+            // SAFETY: `pic` was written by `dav1d_get_picture` above
+            // (the shim writes it unconditionally) and not yet
+            // unref'd; the ABI takes the picture's references back
+            // through this pointer and writes the emptied picture.
+            unsafe { dav1d_picture_unref(Some(NonNull::from(&mut pic))) };
+            Self::release_unref_residual(&mut pic);
             if is_eagain(r.0) {
                 return Ok(emitted);
             }
@@ -498,6 +515,29 @@ impl Av1Decoder {
             // rav1d latches the error for exactly one get call; the
             // next TU resyncs. Count and keep draining.
             *damage += 1;
+        }
+    }
+
+    /// Terminal release of a [`Dav1dPicture`] that already went
+    /// through `dav1d_picture_unref`.
+    ///
+    /// rav1d 1.1.0's `dav1d_picture_unref` takes the frame references
+    /// back but re-installs a *fresh* default ITU-T.35 `Arc` on its
+    /// way out (its `mem::take` + conversion + write-back): the
+    /// picture it hands back owns a 48-byte allocation with no
+    /// releaser — a second `unref` only installs another one. The C
+    /// shim has no terminal state of its own; consuming the residual
+    /// `RawArc` here *is* the terminal state. Fuzz-found as the
+    /// 48-byte-per-drain LSan leak (`fuzz_codec_av1`, audit run
+    /// 44229396612). Self-healing: a future rav1d that writes a
+    /// zeroed picture back leaves `None` here and this is a no-op.
+    fn release_unref_residual(pic: &mut Dav1dPicture) {
+        if let Some(raw) = pic.itut_t35_ref.take() {
+            // SAFETY: `raw` was installed by `dav1d_picture_unref`'s
+            // write-back — i.e. produced by `RawArc::from_arc` inside
+            // that call — and `into_arc` consumes it exactly once;
+            // the returned `Arc`'s drop releases the allocation.
+            drop(unsafe { raw.into_arc() });
         }
     }
 

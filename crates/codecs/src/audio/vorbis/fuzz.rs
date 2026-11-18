@@ -171,4 +171,16 @@ mod tests {
         fuzz_codec_vorbis(&hostile);
         fuzz_codec_vorbis(&hostile[..hostile.len() / 2]);
     }
+
+    #[test]
+    fn campaign_seed_survives() {
+        // The committed campaign seed (crash-42fe635e for `fuzz_codec_vorbis`) —
+        // the first honest fuzz run (audit run 44229396612) crashed
+        // on exactly this input (vorbis.setup slice bounds). The seed is pinned so every
+        // run re-proves the fix.
+        let seed = include_bytes!(
+            "../../../../../fuzz/corpus/fuzz_codec_vorbis/crash-42fe635e3e6f5989ce5943cd6a22ae107a1bc67a"
+        );
+        fuzz_codec_vorbis(seed);
+    }
 }

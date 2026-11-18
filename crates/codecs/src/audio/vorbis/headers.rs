@@ -223,14 +223,19 @@ impl VorbisHeaders {
         let comment_end = IDENT_LEN + comment_len;
         let comments = super::comments::parse(&data[IDENT_LEN..comment_end])?;
         let setup = data.get(comment_end..).unwrap_or(&[]);
-        if setup.is_empty() {
+        // Fuzz-found (fuzz_codec_vorbis, crash-42fe635e): a setup
+        // remainder of 1..7 bytes slipped past the empty check and
+        // panicked on `&setup[1..7]` (range end 7 > len). The length
+        // gate must precede the magic slice; short-but-nonempty is the
+        // same typed truncation as absent.
+        if setup.len() < 7 {
             return Err(corrupt(
                 "vorbis.setup.truncated",
                 media_types::error::CorruptDetail::Truncated {
                     expected: 7,
-                    found: 0,
+                    found: setup.len() as u64,
                 },
-                "the setup header is absent from the header chain",
+                "the setup header is absent or truncated in the header chain",
             )
             .into_engine_error());
         }

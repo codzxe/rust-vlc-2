@@ -407,37 +407,60 @@ pub(crate) fn decode_into(
         ));
     }
     let pkt = PacketRef::new(0, SymTimestamp::ZERO, SymDuration::ZERO, packet);
-    let decoded = engine
-        .decode_ref(&pkt)
-        .map_err(|e| map_engine_error(e, packet.len()))?;
-    let samples = decoded.frames();
-    let channels = decoded.spec().channels().count();
-    if samples == 0 || channels == 0 {
-        return Err(corrupt(
-            "alac.frame.no_samples",
+    // Fuzz-found (fuzz_codec_alac): symphonia-codec-alac 0.6.1's
+    // `predict()` can multiply-overflow on crafted coefficients and
+    // panic (its `src/lib.rs:238`). The engine is exact-pinned and
+    // pure Rust (no soundness issue — in release the mul wraps), so
+    // the decoder boundary contains the panic as a typed corrupt
+    // error instead of crashing the host; the crashing input lives
+    // on as a permanent corpus seed. Same containment policy as the
+    // opus decoder's hostile-input contract (its decoder.rs tests).
+    // The borrowed `decoded` cannot cross the catch_unwind seam, so
+    // the copy into `scratch` runs inside; only the owned shape
+    // escapes.
+    let (samples, channels) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let decoded = engine
+            .decode_ref(&pkt)
+            .map_err(|e| map_engine_error(e, packet.len()))?;
+        let samples = decoded.frames();
+        let channels = decoded.spec().channels().count();
+        if samples == 0 || channels == 0 {
+            return Err(corrupt(
+                "alac.frame.no_samples",
+                media_types::error::CorruptDetail::InvalidStructure { offset: None },
+                "engine decoded zero samples/channels",
+            ));
+        }
+        if channels != config.num_channels as usize {
+            // The engine derives channels from the same cookie, so this is
+            // unreachable-by-construction — the gate exists so a future
+            // engine drift is a typed error, never a wrong-buffer write.
+            return Err(corrupt(
+                "alac.frame.channels",
+                media_types::error::CorruptDetail::InvalidStructure { offset: None },
+                format!(
+                    "engine produced {channels} channel(s), the cookie declares {}",
+                    config.num_channels
+                ),
+            ));
+        }
+        let need = samples * channels;
+        if scratch.len() < need {
+            scratch.resize(need, 0);
+        }
+        let out = &mut scratch[..need];
+        decoded.copy_to_slice_interleaved::<i32, _>(&mut *out);
+        Ok::<(usize, usize), AlacError>((samples, channels))
+    }))
+    .map_err(|_| {
+        corrupt(
+            "alac.frame.engine-panic",
             media_types::error::CorruptDetail::InvalidStructure { offset: None },
-            "engine decoded zero samples/channels",
-        ));
-    }
-    if channels != config.num_channels as usize {
-        // The engine derives channels from the same cookie, so this is
-        // unreachable-by-construction — the gate exists so a future
-        // engine drift is a typed error, never a wrong-buffer write.
-        return Err(corrupt(
-            "alac.frame.channels",
-            media_types::error::CorruptDetail::InvalidStructure { offset: None },
-            format!(
-                "engine produced {channels} channel(s), the cookie declares {}",
-                config.num_channels
-            ),
-        ));
-    }
+            "the ALAC engine panicked on this packet (symphonia predict overflow, contained)",
+        )
+    })??;
     let need = samples * channels;
-    if scratch.len() < need {
-        scratch.resize(need, 0);
-    }
-    let out = &mut scratch[..need];
-    decoded.copy_to_slice_interleaved::<i32, _>(&mut *out);
+    let out = &scratch[..need];
     // Narrow the engine's 32-bit-justified planes into the negotiated
     // width (module-doc mapping: source bits land in the high bits).
     let (sample_format, width_bits) = output_sample_format(config.bit_depth);

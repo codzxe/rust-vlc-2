@@ -82,3 +82,21 @@ pub fn fuzz_demux_ps(data: &[u8]) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn campaign_seed_survives() {
+        // The committed campaign seed (crash-76904fd7 for
+        // `fuzz_demux_ps`) — the first honest fuzz run (audit run
+        // 44229396612) crashed on exactly this input (an MPEG-1 PES
+        // header longer than its declared packet). The seed is
+        // pinned so every run re-proves the fix.
+        let seed = include_bytes!(
+            "../../../../fuzz/corpus/fuzz_demux_ps/crash-76904fd7c5958b5b372b7f7dddd5a631954bfc2f"
+        );
+        fuzz_demux_ps(seed);
+    }
+}

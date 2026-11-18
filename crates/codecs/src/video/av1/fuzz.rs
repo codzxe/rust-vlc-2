@@ -112,4 +112,15 @@ mod tests {
         fuzz_codec_av1(&vec![0xff; 4096]);
         fuzz_codec_av1(&vec![0x00; 4096]);
     }
+
+    #[test]
+    fn campaign_seed_survives() {
+        // The committed campaign seed (fuzz/corpus/fuzz_codec_av1).
+        // The first honest fuzz run (audit run 44229396612, shard 3)
+        // reported a 48-byte LeakSanitizer leak on exactly this
+        // input; the seed is pinned here so any sanitizer-equipped
+        // test run re-proves the decode path clean.
+        let seed = include_bytes!("../../../../../fuzz/corpus/fuzz_codec_av1/seed_ivf_av1.ivf");
+        fuzz_codec_av1(seed);
+    }
 }

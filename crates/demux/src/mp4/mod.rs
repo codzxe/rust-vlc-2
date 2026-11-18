@@ -812,6 +812,7 @@ impl Mp4Demuxer {
             self.order = order;
         }
         // Chapter titles from the referenced text tracks.
+
         self.read_chapter_titles()?;
         // Exposed ordinals (hidden chapter traks leave gaps).
         let mut ordinal = 0u32;
@@ -828,6 +829,7 @@ impl Mp4Demuxer {
             })
             .collect();
         // Attached-picture packets: surfaced ahead of the media walk.
+
         self.queue_cover_packets()?;
         self.started = true;
         let out: Vec<Track> = self
@@ -1251,18 +1253,28 @@ impl Mp4Demuxer {
                     }
                 }
                 b"stts" => {
+                    // Fuzz-found (fuzz_demux_mp4, slow-unit
+                    // 8df23b27: a 3.2-billion-entry stts with an
+                    // 8-byte body spun the unclamped entry loop for
+                    // ~7 s). The entry walk is ceiling-clamped like
+                    // every sibling table; entries past the ceiling
+                    // are damage-noted, not walked.
                     let count = u32be(body, 4).unwrap_or(0) as usize;
-                    for i in 0..count {
+                    let take = count.min(MAX_SAMPLES);
+                    for i in 0..take {
                         let run = u32be(body, 8 + i * 8).unwrap_or(0) as u64;
                         let delta = u64::from(u32be(body, 12 + i * 8).unwrap_or(0));
-                        let take =
+                        let expanded =
                             run.min((MAX_SAMPLES as u64).saturating_sub(deltas.len() as u64));
-                        for _ in 0..take {
+                        for _ in 0..expanded {
                             deltas.push(delta);
                         }
-                        if run > take {
-                            self.note(run - take, "stts-count-over-ceiling");
+                        if run > expanded {
+                            self.note(run - expanded, "stts-count-over-ceiling");
                         }
+                    }
+                    if count > take {
+                        self.note((count - take) as u64, "stts-entries-over-ceiling");
                     }
                 }
                 b"stco" => {
@@ -1313,8 +1325,11 @@ impl Mp4Demuxer {
                 }
                 b"ctts" => {
                     let version = body.first().copied().unwrap_or(0);
+                    // Same ceiling clamp as stts (the slow-unit
+                    // 8df23b27 twin: ctts shares the unbounded walk).
                     let count = u32be(body, 4).unwrap_or(0) as usize;
-                    for i in 0..count {
+                    let take = count.min(MAX_SAMPLES);
+                    for i in 0..take {
                         let run = u32be(body, 8 + i * 8).unwrap_or(0) as u64;
                         let off = if version == 1 {
                             i64be(body, 12 + i * 8).unwrap_or(0)
@@ -1322,13 +1337,17 @@ impl Mp4Demuxer {
                             // v0 composition offsets are signed i32.
                             i64::from(u32be(body, 12 + i * 8).unwrap_or(0) as i32)
                         };
-                        let take = run.min((MAX_SAMPLES as u64).saturating_sub(cts.len() as u64));
-                        for _ in 0..take {
+                        let expanded =
+                            run.min((MAX_SAMPLES as u64).saturating_sub(cts.len() as u64));
+                        for _ in 0..expanded {
                             cts.push(off);
                         }
-                        if run > take {
-                            self.note(run - take, "ctts-count-over-ceiling");
+                        if run > expanded {
+                            self.note(run - expanded, "ctts-count-over-ceiling");
                         }
+                    }
+                    if count > take {
+                        self.note((count - take) as u64, "ctts-entries-over-ceiling");
                     }
                 }
                 _ => {}

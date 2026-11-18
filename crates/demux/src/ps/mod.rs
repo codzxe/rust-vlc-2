@@ -607,6 +607,14 @@ impl PsDemuxer {
             (at as u64, p, d)
         };
         let data_start = pos + 6 + header_len;
+        // Fuzz-found (fuzz_demux_ps): the MPEG-1 stuffing/stamp walk
+        // can consume more bytes than a short packet declares. The
+        // MPEG-2 branch rejects exactly that ("the header overruns
+        // its own declared packet"); the MPEG-1 branch must too —
+        // not subtract past zero.
+        if header_len > u64::from(declared_len) {
+            return Err(error::bad_pes_header(pos));
+        }
         let payload_len = u64::from(declared_len) - header_len;
         Ok(PesHeader {
             stream_id,

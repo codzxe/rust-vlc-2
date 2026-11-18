@@ -234,4 +234,16 @@ mod tests {
         // 32 reps × 10 segments = 320 planned; reps 33–40 unvisited.
         assert_eq!(planned, 320);
     }
+
+    #[test]
+    fn campaign_seed_survives() {
+        // The committed campaign seed (crash-9239ade0 for `fuzz_demux_mpd`) —
+        // the first honest fuzz run (audit run 44229396612) crashed
+        // on exactly this input (SegmentTemplate@duration="0" divide-by-zero). The seed is pinned so every
+        // run re-proves the fix.
+        let seed = include_bytes!(
+            "../../../../fuzz/corpus/fuzz_demux_mpd/crash-9239ade042f22f274215290a1168160b17947fe4"
+        );
+        fuzz_demux_mpd(seed);
+    }
 }

@@ -1109,3 +1109,21 @@ fn fuzz_lite_fragment_mutations_never_panic() {
         mutated[i] ^= 0x01;
     }
 }
+
+#[test]
+fn hostile_stts_entry_flood_is_fast() {
+    // Regression for the campaign slow-unit (audit run 44229396612,
+    // shard 1: slow-unit-8df23b27): a trak whose stts declares
+    // 0xBF00_0000 (3.2 B) entries in an 8-byte body spun the
+    // unclamped entry walk for ~7 s per pass. The walk is now
+    // ceiling-clamped (stts-entries-over-ceiling); this pins the
+    // input as fast, not merely as panic-free.
+    let bytes = include_bytes!("tests/stts_entry_flood.bin");
+    let t = std::time::Instant::now();
+    super::fuzz::fuzz_demux_mp4(bytes);
+    let elapsed = t.elapsed();
+    assert!(
+        elapsed < std::time::Duration::from_millis(500),
+        "fuzz_demux_mp4 took {elapsed:?} on the stts-flood input — the entry-walk clamp regressed"
+    );
+}
