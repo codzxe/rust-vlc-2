@@ -98,8 +98,14 @@ case "$cmd" in
       set -- "${ARGS[@]}"
     fi
     head1 "full workspace mutation run (shard $shard, budget ${BUDGET_MIN}m, baseline cap ${TIMEOUT}s) ${*:-}"
+    # NOTE: cargo-mutants 27.x rejects --timeout together with
+    # --timeout-multiplier (mutually exclusive strategies - absolute
+    # cap vs baseline-relative). The absolute cap is the deterministic
+    # choice across shards and runners; the 3x multiplier was a
+    # leftover from the run-36 repair and killed all 8 shards at
+    # argument parsing (audit run 44245799715: zero mutants tested).
     timeout "${BUDGET_MIN}m" cargo mutants --workspace --test-tool nextest \
-      --jobs "$JOBS" --timeout "$TIMEOUT" --timeout-multiplier 3 \
+      --jobs "$JOBS" --timeout "$TIMEOUT" \
       --exclude-re "$EXCLUDE_RE" "$@" \
       --output "$OUT/mutants/full-shard-$shard" \
       2>&1 | tee "$OUT/mutants/full-shard-$shard.log" | tail -40
