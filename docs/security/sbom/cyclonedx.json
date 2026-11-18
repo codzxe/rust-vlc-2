@@ -2,7 +2,7 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:57dc9149-8ff3-89ca-8883-92b89fc20cec",
+  "serialNumber": "urn:uuid:56213503-3b1d-885f-8407-65a618c4248d",
   "version": 1,
   "metadata": {
     "component": {
@@ -3046,21 +3046,21 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/wasmi@2.0.0",
+      "bom-ref": "pkg:cargo/wasmi@2.0.1",
       "name": "wasmi",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "scope": "required",
-      "purl": "pkg:cargo/wasmi@2.0.0",
+      "purl": "pkg:cargo/wasmi@2.0.1",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/wasmi/2.0.0"
+          "url": "https://crates.io/api/v1/crates/wasmi/2.0.1"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "78693fcdd618e0fc34af59c6b8efa9ac5d58c68df940beff4bedddb6acfe7c27"
+          "content": "b871e9b007ab46d593be9f544b6509bbd29387de68991695b0fb2b5dc2f488c8"
         }
       ],
       "properties": [
@@ -3072,21 +3072,21 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/wasmi_collections@2.0.0",
+      "bom-ref": "pkg:cargo/wasmi_collections@2.0.1",
       "name": "wasmi_collections",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "scope": "required",
-      "purl": "pkg:cargo/wasmi_collections@2.0.0",
+      "purl": "pkg:cargo/wasmi_collections@2.0.1",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/wasmi_collections/2.0.0"
+          "url": "https://crates.io/api/v1/crates/wasmi_collections/2.0.1"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "8a8be2aa467cf2d29e96ff759472c36eeb44a3c81c67fc9cb76c9a24c519c557"
+          "content": "49ede48be8c298db065fbe07d8e39f53a556b414c202ed1f5b61a1809fd0e9e4"
         }
       ],
       "properties": [
@@ -3098,21 +3098,21 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/wasmi_core@2.0.0",
+      "bom-ref": "pkg:cargo/wasmi_core@2.0.1",
       "name": "wasmi_core",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "scope": "required",
-      "purl": "pkg:cargo/wasmi_core@2.0.0",
+      "purl": "pkg:cargo/wasmi_core@2.0.1",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/wasmi_core/2.0.0"
+          "url": "https://crates.io/api/v1/crates/wasmi_core/2.0.1"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "69372d5fda3ea3d1e0aa6603c7888110e0187e88ea17cd8fc2e2df0a0e1f37fa"
+          "content": "471c9cf3627972b1c0b80a098129968208679ca915b75839092cc5178c981834"
         }
       ],
       "properties": [
@@ -3124,21 +3124,21 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/wasmi_ir@2.0.0",
+      "bom-ref": "pkg:cargo/wasmi_ir@2.0.1",
       "name": "wasmi_ir",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "scope": "required",
-      "purl": "pkg:cargo/wasmi_ir@2.0.0",
+      "purl": "pkg:cargo/wasmi_ir@2.0.1",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/wasmi_ir/2.0.0"
+          "url": "https://crates.io/api/v1/crates/wasmi_ir/2.0.1"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "8f17b774caa13c618c7244f1ee51fe23c5e7b8538a471fa46d9949779758aed6"
+          "content": "1fa8bd0931f475e2e8e4f83b3e6a7aff65a4a793bea82a4dd918cdd6b8fedf0b"
         }
       ],
       "properties": [
@@ -4178,7 +4178,7 @@
         "settings-schema@0.1.0",
         "testkit@0.1.0",
         "pkg:cargo/toml@1.1.8+spec-1.1.0",
-        "pkg:cargo/wasmi@2.0.0"
+        "pkg:cargo/wasmi@2.0.1"
       ]
     },
     {
@@ -4649,31 +4649,31 @@
       "dependsOn": []
     },
     {
-      "ref": "pkg:cargo/wasmi@2.0.0",
+      "ref": "pkg:cargo/wasmi@2.0.1",
       "dependsOn": [
         "pkg:cargo/spin@0.9.9",
-        "pkg:cargo/wasmi_collections@2.0.0",
-        "pkg:cargo/wasmi_core@2.0.0",
-        "pkg:cargo/wasmi_ir@2.0.0",
+        "pkg:cargo/wasmi_collections@2.0.1",
+        "pkg:cargo/wasmi_core@2.0.1",
+        "pkg:cargo/wasmi_ir@2.0.1",
         "pkg:cargo/wasmparser@0.228.0"
       ]
     },
     {
-      "ref": "pkg:cargo/wasmi_collections@2.0.0",
+      "ref": "pkg:cargo/wasmi_collections@2.0.1",
       "dependsOn": [
         "pkg:cargo/string-interner@0.19.0"
       ]
     },
     {
-      "ref": "pkg:cargo/wasmi_core@2.0.0",
+      "ref": "pkg:cargo/wasmi_core@2.0.1",
       "dependsOn": [
         "pkg:cargo/libm@0.2.16"
       ]
     },
     {
-      "ref": "pkg:cargo/wasmi_ir@2.0.0",
+      "ref": "pkg:cargo/wasmi_ir@2.0.1",
       "dependsOn": [
-        "pkg:cargo/wasmi_core@2.0.0"
+        "pkg:cargo/wasmi_core@2.0.1"
       ]
     },
     {
