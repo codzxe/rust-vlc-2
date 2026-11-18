@@ -53,6 +53,28 @@
       "production_impact": "ITU-T.35 metadata payload_size underflow wraps negative in release and is rejected by the payload_size <= 0 guard two lines below (log line, no UB); the OBU is skipped",
       "containment": "none possible in-process (the panic is inside rav1d's extern \"C\" shim called over FFI; unwinding through extern \"C\" aborts) - and none needed: release arithmetic wraps to the guarded branch",
       "discovered": "audit run 44245745551 shard 3 (crash-ddfd3d63, a 10-byte OBU)"
+    },
+    {
+      "target": "fuzz_codec_alac",
+      "crate": "symphonia-codec-alac",
+      "version": "0.6.1",
+      "location": "src/lib.rs:216",
+      "panic_message": "attempt to subtract with overflow",
+      "class": "overflow-checks-only",
+      "production_impact": "LPC FIR filter slice arithmetic (out[i - order..i]) underflows when i < order; wraps in release where the malformed range surfaces as a slice-index panic on the same packet - both contained at the decoder boundary",
+      "containment": "same decode_into catch_unwind -> typed alac.frame.engine-panic corrupt error (crates/codecs/src/audio/alac/decoder.rs); one damaged packet, the stream continues",
+      "discovered": "audit run 44251372950 shard 2 (crash on a fresh input; the registry correctly refused to blanket-allowlist the unregistered line)"
+    },
+    {
+      "target": "fuzz_codec_av1",
+      "crate": "rav1d",
+      "version": "1.1.0",
+      "location": "src/decode.rs:4997",
+      "panic_message": "called `Option::unwrap()` on a `None` value",
+      "class": "third-party-unwrap",
+      "production_impact": "f.seq_hdr.clone().unwrap() on a frame decoded without a sequence header - unwrap is NOT debug-only: a crafted stream aborts the process in release builds too (panic unwinding through rav1d's extern \"C\" shim aborts at the FFI boundary)",
+      "containment": "none possible in-process (inside rav1d's extern \"C\" shim over FFI); the player-level mitigation is the process-level decode isolation already assumed for third-party engines - upstream fix required",
+      "discovered": "audit run 44251372950 shard 3"
     }
   ]
 }
