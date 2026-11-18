@@ -1430,6 +1430,16 @@ fn broadcast_fixture_refuses_typed_where_ffprobe_refuses() {
     let Some(dir) = fixture_dir() else {
         return;
     };
+    // The same loud ffprobe-absent skip the cross-check family uses
+    // one screen up: the whole point of this test is the oracle's own
+    // refusal, so without ffprobe there is nothing to assert — and
+    // an unreachable! on the spawn masked the mutation lane's
+    // tool-less baseline (audit run 44251617193: all shards' baselines
+    // failed on exactly this, zero mutants tested).
+    if Command::new("ffprobe").arg("-version").output().is_err() {
+        eprintln!("SKIP: ffprobe absent (asf broadcast oracle)");
+        return;
+    }
     let path = dir.join("asf_stream_broadcast.wmv");
     if !path.exists() {
         let out = Command::new("ffmpeg")
