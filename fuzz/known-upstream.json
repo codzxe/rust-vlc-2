@@ -44,17 +44,6 @@
       "discovered": "audit run 44245745551 shard 1 (crash-5b584110)"
     },
     {
-      "target": "fuzz_codec_av1",
-      "crate": "rav1d",
-      "version": "1.1.0",
-      "location": "src/obu.rs:2435",
-      "panic_message": "attempt to subtract with overflow",
-      "class": "overflow-checks-only",
-      "production_impact": "ITU-T.35 metadata payload_size underflow wraps negative in release and is rejected by the payload_size <= 0 guard two lines below (log line, no UB); the OBU is skipped",
-      "containment": "none possible in-process (the panic is inside rav1d's extern \"C\" shim called over FFI; unwinding through extern \"C\" aborts) - and none needed: release arithmetic wraps to the guarded branch",
-      "discovered": "audit run 44245745551 shard 3 (crash-ddfd3d63, a 10-byte OBU)"
-    },
-    {
       "target": "fuzz_codec_alac",
       "crate": "symphonia-codec-alac",
       "version": "0.6.1",
@@ -75,6 +64,17 @@
       "production_impact": "f.seq_hdr.clone().unwrap() on a frame decoded without a sequence header - unwrap is NOT debug-only: a crafted stream aborts the process in release builds too (panic unwinding through rav1d's extern \"C\" shim aborts at the FFI boundary)",
       "containment": "none possible in-process (inside rav1d's extern \"C\" shim over FFI); the player-level mitigation is the process-level decode isolation already assumed for third-party engines - upstream fix required",
       "discovered": "audit run 44251372950 shard 3"
+    },
+    {
+      "target": "fuzz_codec_av1",
+      "crate": "rav1d",
+      "version": "1.1.0",
+      "location": "src/obu.rs:2425-2445",
+      "panic_message": "attempt to subtract with overflow",
+      "class": "overflow-checks-only",
+      "production_impact": "the ITU-T.35 metadata block decrements payload_size once per trailing bit and once per country-code byte on a size attacker controls; truncated metadata underflows any of the -= 1 sites (observed at :2428 and :2435 on different inputs). In release the subtraction wraps negative and the payload_size <= 0 guard at the block's exit rejects the OBU (log line, no UB) - the OBU is skipped and decode continues",
+      "containment": "none needed for release (wraps to the guarded branch); registered as a LINE RANGE because the block holds several decrement sites that surface one at a time under fuzzing",
+      "discovered": "audit run 44245745551 shard 3 (:2435, crash-ddfd3d63) and 44255640718 shard 3 (:2428, separate input)"
     }
   ]
 }

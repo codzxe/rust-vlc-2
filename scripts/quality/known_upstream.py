@@ -60,8 +60,34 @@ def parse_panic(log_text: str) -> tuple[str, str] | None:
     return f"{site.group(1)}:{site.group(2)}", message
 
 
+def location_matches(location: str, panic_site: str) -> bool:
+    """Match a registry location against a panic site.
+
+    Two shapes:
+      "src/foo.rs:123"      — exact line;
+      "src/foo.rs:123-145"  — inclusive line range (an arithmetic
+                              cluster inside one third-party block:
+                              registering every `- 1` line separately
+                              is whack-a-mole, and each site in the
+                              cluster shares one analysis).
+    """
+    if ":" not in location:
+        return False
+    file_part, line_part = location.rsplit(":", 1)
+    site_file, _, site_line = panic_site.rpartition(":")
+    if not site_file.endswith(file_part):
+        return False
+    if "-" in line_part:
+        try:
+            lo, hi = (int(x) for x in line_part.split("-", 1))
+            return lo <= int(site_line) <= hi
+        except ValueError:
+            return False
+    return site_line == line_part
+
+
 def classify(target: str, log_path: Path, entries: list[dict]) -> tuple[bool, str]:
-    """Exact-match the log's panic against the registry for `target`."""
+    """Match the log's panic against the registry for `target`."""
     try:
         log_text = log_path.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -82,7 +108,7 @@ def classify(target: str, log_path: Path, entries: list[dict]) -> tuple[bool, st
         crate_dir = f"{entry['crate']}-{entry['version']}"
         if crate_dir not in panic_path:
             continue
-        if not panic_path.endswith(entry["location"]):
+        if not location_matches(entry["location"], panic_path):
             continue
         # Exact message match (the registry stores the full line).
         if entry["panic_message"] not in message:
