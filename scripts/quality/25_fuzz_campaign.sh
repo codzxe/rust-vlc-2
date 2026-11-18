@@ -36,10 +36,14 @@ SUMMARY="$OUT/fuzz/campaign/summary.txt"
 # targets died at "error: the option `Z` is only accepted on the nightly
 # compiler", exit=1 with 0 artifacts - which the artifact-only crash
 # count read as "clean". RUSTUP_TOOLCHAIN overrides the pin for the
-# whole process tree; the musl link target is cargo-fuzz's default and
-# is not part of a default nightly install.
+# whole process tree.
+#
+# The target is pinned to the host triple explicitly: cargo-fuzz prefers
+# musl when its std is installed, and "sanitizer is incompatible with
+# statically linked libc" kills the build at -Ctarget-feature=crt-static
+# (run 37). The host (glibc, dynamic crt) is the ASan-compatible one.
 export RUSTUP_TOOLCHAIN=nightly
-rustup target add x86_64-unknown-linux-musl >/dev/null 2>&1 || true
+HOST_TRIPLE="$(rustc -vV | awk '/^host:/ {print $2}')"
 
 crashes=0
 build_failures=0
@@ -47,7 +51,7 @@ for t in "${TARGETS[@]}"; do
   say ""
   say "--- $t (${SECS}s)"
   log="${OUT}/fuzz/campaign/${t}.log"
-  cargo fuzz run "$t" -- -max_total_time="$SECS" -rss_limit_mb=4096 > "$log" 2>&1
+  cargo fuzz run --target "$HOST_TRIPLE" "$t" -- -max_total_time="$SECS" -rss_limit_mb=4096 > "$log" 2>&1
   rc=$?
   arts=0
   if [ -d "fuzz/artifacts/$t" ]; then
