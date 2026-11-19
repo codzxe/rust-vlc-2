@@ -118,7 +118,15 @@ case "$cmd" in
       --exclude-re "$EXCLUDE_RE" "$@" \
       --output "$OUT/mutants/full-shard-$shard" \
       -- -E "$MUTANTS_TEST_FILTER" \
-      2>&1 | tee "$OUT/mutants/full-shard-$shard.log" | tail -40
+      2>&1 | tee "$OUT/mutants/full-shard-$shard.log"
+    # NOTE: no `| tail -40` on the stream - tail cannot emit a line until its
+    # input ENDS, so while a shard is running the step log shows nothing, and
+    # when the RUNNER dies (SIGTERM, runs 62/71/73/75) tail is killed before
+    # it ever flushes: we lost the mutant-level progress AND the workspace
+    # log (the artifact upload step never runs on a dead runner either). The
+    # tee'd file still captures everything for the artifact; the step log now
+    # streams the same lines live, so a mid-run death names the exact mutant
+    # being tested when the VM went down (four rounds flew blind on this).
     rc=${PIPESTATUS[0]}
     # 124 = the budget ended the run: partial outcomes are the evidence
     # (the score reports mutants actually tested), never a failure.
