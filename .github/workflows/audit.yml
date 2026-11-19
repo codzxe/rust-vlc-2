@@ -237,6 +237,13 @@ jobs:
         run: bash scripts/quality/12_mutants.sh full --shard ${{ matrix.shard }}/8
         env:
           MUTANTS_BUDGET_MIN: "150"
+          # 4-way mutant concurrency: shards kept dying to runner shutdown
+          # signals mid-test (54-74 min in, runs 62/71/73 - zero real
+          # cargo-mutants failures ever). The default 8-way concurrency on a
+          # 4-core runner is the heaviest load pattern of any lane (every
+          # other lane survived); halving it costs throughput, not evidence -
+          # a 150-min budget already accepts clean partial outcomes.
+          MUTANTS_JOBS: "4"
 
       - uses: actions/upload-artifact@v4
         if: always()
