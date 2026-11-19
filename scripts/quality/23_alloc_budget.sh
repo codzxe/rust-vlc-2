@@ -65,7 +65,12 @@ say "sampling ${#FILES[@]} fixtures"
 
 # One process, many files: lumen-mem-audit reports per file.
 cargo run -q -p lumen-mem-audit -- "${FILES[@]}" > "$RAW" 2>&1
-say "mem-audit exit=$? (see $RAW)"
+mem_rc=$?
+say "mem-audit exit=$mem_rc (see $RAW)"
+if [ "$mem_rc" -ne 0 ]; then
+  not_run "alloc-budget" "lumen-mem-audit failed (exit $mem_rc) - gate not evaluated"
+  exit 1
+fi
 
 $PY - "$RAW" "$MAX_RATIO" "$OUT/alloc/alloc-budget.txt" <<'PYEOF'
 import re, statistics, sys
@@ -86,6 +91,12 @@ for line in open(raw, encoding="utf-8", errors="replace"):
     rows.append({"size": size, "peak": peak, "verdict": kv.get("verdict", "?"),
                  "container": kv.get("container", "?"), "file": kv.get("file", "?"),
                  "error": kv.get("error", "")})
+
+# Vacuous-pass guard: zero parsed rows means mem-audit measured nothing; the
+# budget logic below would then compare nothing and pass on zero evidence.
+if not rows:
+    print("alloc-budget: no MEMAUDIT rows parsed from %s - refusing to pass on zero evidence" % raw)
+    sys.exit(1)
 
 # The naive `peak/size` ratio is dominated by CONSTANT parser overhead: a 200-byte
 # .cue "amplifies" 1600x only because every open costs ~300 KB regardless of

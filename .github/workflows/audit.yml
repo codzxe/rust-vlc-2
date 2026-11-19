@@ -38,6 +38,9 @@ on:
       parity:
         description: "speed job: parity floor, e.g. 0.5 (0 = regression gate only)"
         default: "0"
+      shards:
+        description: "mutation job: JSON array of 1-based shards to (re)run, e.g. [4,6,7,8] (default: all 8)"
+        default: "[1,2,3,4,5,6,7,8]"
 
 permissions:
   contents: read
@@ -198,6 +201,13 @@ jobs:
   # blobs across two rounds), the shorter window is the difference between a
   # reproducible lane and a lottery. Rounds can simply be re-dispatched; the
   # score aggregates whatever each shard actually tested.
+  #
+  # Selective re-dispatch: `shards` picks the 1-based workflow shards to run
+  # (cargo-mutants slices are deterministic per commit, so re-running shard k
+  # re-tests exactly slice k-1). A round that loses shards 4,6,7,8 to runner
+  # shutdown signals is completed by dispatching shards=[4,6,7,8] instead of
+  # re-burning ~19 h CPU on all eight from zero (no --resume exists in
+  # cargo-mutants 27.x - the shard input IS the resume mechanism).
   mutation:
     if: github.event.schedule == '0 3 * * 0' || (github.event_name == 'workflow_dispatch' && inputs.tier == 'mutation')
     runs-on: ubuntu-latest
@@ -205,7 +215,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: ${{ fromJSON(inputs.shards || '[1,2,3,4,5,6,7,8]') }}
     steps:
       - uses: actions/checkout@v4
         with:

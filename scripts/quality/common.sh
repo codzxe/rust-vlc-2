@@ -47,7 +47,10 @@ need() {
 sg_run() {
   if command -v ast-grep >/dev/null 2>&1; then
     ast-grep "$@"
-  elif command -v sg >/dev/null 2>&1; then
+  elif command -v sg >/dev/null 2>&1 && sg --version 2>&1 | grep -q ast-grep; then
+    # the guard: util-linux ships its own `sg` (setgroups) that shadows
+    # ast-grep's binary name on Linux - without the check every scan
+    # degrades to a NOT RUN row (sg: unrecognized option '--rule').
     sg "$@"
   elif command -v npx.cmd >/dev/null 2>&1; then
     npx.cmd --yes -p @ast-grep/cli@0.51.3 ast-grep "$@"

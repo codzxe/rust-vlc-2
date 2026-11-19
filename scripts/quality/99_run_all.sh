@@ -66,11 +66,12 @@ case "$MODE" in
     JG 27_speed_parity.sh "${@:2}"
     ;;
   all)
-    bash "$HERE/99_run_all.sh" static
-    bash "$HERE/99_run_all.sh" security
-    bash "$HERE/99_run_all.sh" quality
-    bash "$HERE/99_run_all.sh" dynamic
-    exit $?
+    # every tier's verdict counts - `exit $?` kept only the last tier's
+    all_rc=0
+    for t in static security quality dynamic; do
+      bash "$HERE/99_run_all.sh" "$t" || all_rc=1
+    done
+    exit "$all_rc"
     ;;
   report)
     ;;

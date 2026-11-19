@@ -131,6 +131,10 @@ open(out_path, "w", encoding="utf-8").write("\n".join(L) + "\n")
 print("\n".join(L[-12 - len(gaps):]))
 sys.exit(1 if (strict and gaps) else 0)
 PYEOF
+gate_rc=$?
 
 say ""
 say "written: $OUT/coverage-matrix/coverage.txt"
+# Propagate the gate verdict: the say lines above must not swallow it
+# (a gate that cannot fail is theatre - 99_run_all.sh's own design rule).
+exit "$gate_rc"

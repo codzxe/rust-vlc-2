@@ -9,14 +9,21 @@ message: >-
 # the whole rule file, rc=8, and the scan silently became a NOT RUN row).
 # Match arms are reached via context+selector; a discarded `.ok()` call is
 # matched as the expression statement `$E.ok();`.
+# The context must contain ONLY the arm of interest: surrounding it with
+# `$$$PRE,` / `, $$$POST` metavars never matches tree-sitter-rust's
+# match-arm node (verified against 8 arm layouts: 0 hits for the PRE/POST
+# form, while the bare-arm context matches empty Err arms in first/middle/
+# last position, comma and comma-less).
+# Deliberately NO `Err($_) => { $$$BODY }` branch: a non-empty body is not
+# proof of swallowing - on this tree it matches 372 arms, 30+ of which
+# propagate the error with context (`Err(e) => return Err(...{e}...)`),
+# the exact opposite of the rule's message. Empty-bodied arms (wildcard or
+# unused named binding - `Err($_)` matches both) are the unambiguous set.
 rule:
   any:
     - pattern: 'if let Err($_) = $E {}'
     - pattern: 'let _ = $E.ok();'
     - pattern: '$E.ok();'
     - pattern:
-        context: 'match $M { $$$PRE, Err($_) => {}, $$$POST }'
-        selector: match_arm
-    - pattern:
-        context: 'match $M { $$$PRE, Err($_) => { $$$BODY }, $$$POST }'
+        context: 'match $M { Err($_) => {} }'
         selector: match_arm
