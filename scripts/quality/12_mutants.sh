@@ -13,26 +13,43 @@ need cargo-mutants || exit 0
 mkdir -p "$OUT/mutants"
 
 # Never mutate: tests, generated code, the template member, the excluded tauri app.
-# Plus the two MPD scanner cursor primitives (audit run 44582085806 + lab exp_A,
-# 2026-11-20): every mutant of advance_char / truncated_at_eof freezes the
-# cursor, so every caller loop (skip_ws, scan_start_tag's damage-resync,
-# skip_after) spins forever - advance_char's + -> * is a flat CPU spin, and
-# the resync path additionally pushes one MpdWarning::BadTag per iteration
-# (~31MB/s/worker, lab-measured: 1.4GB in 45s). Four workers pinned on that
-# cluster killed the runner VM in 77s (run 44582085806, shard 6, exit 143).
-# A hang is infrastructure death, not coverage; the primitives' behavior is
-# exercised indirectly by every other mpd.rs mutant that runs. Matched by
-# function name inside the full mutant name (--exclude-re semantics).
-EXCLUDE_RE="(^|/)(tests|benches|examples)/|_template|desktop-tauri|schemas/generated|Scanner<'a>::advance_char|Scanner<'a>::truncated_at_eof"
+# Plus ALL 13 MPD scanner hang sites in crates/playlists/src/mpd.rs (audit
+# runs 44582085806 + 44771219869, lab exp_A 2026-11-20):
+#   advance_char 750/751, truncated_at_eof 767, next_token 784/787/791/842,
+#   resync_attr 959, Driver::on_end 1589, parse_xs_duration 1936/1951/1957/1971.
+# Cursor-freeze and token-freeze mutants make skip_ws / scan_start_tag's
+# damage-resync / skip_after spin forever; the resync path pushes one
+# MpdWarning::BadTag per iteration (~31MB/s/worker, lab: 1.4GB in 45s), and
+# four workers pinned on consecutive sites cross the VM memory ceiling in
+# ~40-80s - BEFORE any --timeout can fire. Proof: run 44582085806 shard 6
+# died 77s after mpd.rs:740 (full cluster ahead); run 44771219869 shard 6,
+# with only advance_char/truncated_at_eof excluded, entered the next_token
+# quartet 784/787/791/842 on four workers and the runner died 42s later.
+# No timeout wins that race, so the sites are excluded from generation: a
+# guaranteed hang is auto-caught, carries zero discrimination signal, and
+# its finding (unbounded loop + unbounded warning growth on damaged MPD
+# input) is already recorded here and in the audit verdict. advance_char /
+# truncated_at_eof are matched by function name (every mutant hangs); the
+# other ten are matched by exact file:line anchors from exp_A on 239f779 -
+# re-derive them if mpd.rs ever shifts.
+EXCLUDE_RE="(^|/)(tests|benches|examples)/|_template|desktop-tauri|schemas/generated|Scanner<'a>::advance_char|Scanner<'a>::truncated_at_eof|mpd\.rs:(784|787|791|842|959|1589|1936|1951|1957|1971):"
 
-# 90s per mutant, not 1800s (audit run 44582085806): a hang-class mutant
-# (loop-bound / counter mutation in a parser or serve loop) must cost 90s
-# of one worker, not 30 min - slice 6 burned 2.5h of worker time on five
-# 1800s timeouts (hls serve/fetch loops) before dying. It also cuts off the
-# balloon subclass before 4 pinned workers can cross the 16GB runner
-# ceiling. Legit per-mutant test times across every shard log so far are
-# <= 11s, so 90s is 8x headroom; if a baseline ever exceeds it the failure
-# is loud (baseline TIMEOUT) and this cap gets raised deliberately.
+# 90s per mutant, not 1800s (audit runs 44582085806 + 44771219869): a
+# hang-class mutant (loop-bound / counter mutation in a parser or serve
+# loop) must cost 90s of one worker, not 30 min - slice 6 burned 2.5h of
+# worker time on five 1800s timeouts (hls serve/fetch loops) before dying.
+# The cap bounds FLAT hangs only: a memory balloon (the mpd.rs warning-push
+# spins above, ~31MB/s x 4 workers) crosses the VM ceiling in ~40-80s,
+# before this cap can fire - balloons are neutralised by excluding their
+# sites, never by timeout. The cap also bounds the unmutated baseline:
+# legit baselines are <= 5s (slice 3 post-IVF-exclusion: 1046 tests in
+# 4.3s; slice 5: 2s) and legit per-mutant tests are <= 11s across every
+# shard log so far. If anything ever exceeds it the failure is LOUD, FAST
+# and NAMES the culprit - run 44771219869 shard 4 proved it: one 85s IVF
+# lane in the unmutated baseline hit the cap and cargo-mutants exited 4 in
+# 3 minutes with the test name in the log, instead of the old silent
+# 132-minute runner death. That is this cap working as designed; raise it
+# deliberately, never to accommodate a hang.
 TIMEOUT="${MUTANTS_TIMEOUT:-90}"
 JOBS="${MUTANTS_JOBS:-8}"
 # The wall budget for one shard (GNU timeout, minutes). A FULL sweep is
@@ -49,9 +66,15 @@ BUDGET_MIN="${MUTANTS_BUDGET_MIN:-285}"
 # an idle gate runner but flakes under a mutation shard's 8-way load
 # (audit run 44263998011: 2 of 8 shard baselines died on
 # ivf_av1_family_lane racing to end-of-media - 1051 tests cancelled,
-# zero mutants tested). They still gate every CI push; mutation runs
-# just don't re-prove them per-mutant. Excluded by exact name.
-MUTANTS_TEST_FILTER='not(test(=ivf_av1_family_lane) | test(=ivf_vp9_family_lane))'
+# zero mutants tested), and av1_lanes_decode_the_full_stream is the third
+# sibling: an unmutated-baseline row needing 85s+ of real AV1 decode
+# under 4-way shard load (run 44771219869 shard 4: 1046/1047 baseline
+# tests passed in 4.3s, this one was SIGTERM'd at the 90s cap and the
+# shard failed in 3 minutes with zero mutants tested). They still gate
+# every CI push; mutation runs just don't re-prove them per-mutant.
+# Excluded by exact full nextest test name (unit test keeps its module
+# path, integration tests are bare).
+MUTANTS_TEST_FILTER='not(test(=ivf_av1_family_lane) | test(=ivf_vp9_family_lane) | test(=containers::ivf::tests::av1_lanes_decode_the_full_stream))'
 
 cmd="${1:-list}"
 shift || true
