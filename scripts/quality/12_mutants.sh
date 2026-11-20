@@ -13,9 +13,27 @@ need cargo-mutants || exit 0
 mkdir -p "$OUT/mutants"
 
 # Never mutate: tests, generated code, the template member, the excluded tauri app.
-EXCLUDE_RE='(^|/)(tests|benches|examples)/|_template|desktop-tauri|schemas/generated'
+# Plus the two MPD scanner cursor primitives (audit run 44582085806 + lab exp_A,
+# 2026-11-20): every mutant of advance_char / truncated_at_eof freezes the
+# cursor, so every caller loop (skip_ws, scan_start_tag's damage-resync,
+# skip_after) spins forever - advance_char's + -> * is a flat CPU spin, and
+# the resync path additionally pushes one MpdWarning::BadTag per iteration
+# (~31MB/s/worker, lab-measured: 1.4GB in 45s). Four workers pinned on that
+# cluster killed the runner VM in 77s (run 44582085806, shard 6, exit 143).
+# A hang is infrastructure death, not coverage; the primitives' behavior is
+# exercised indirectly by every other mpd.rs mutant that runs. Matched by
+# function name inside the full mutant name (--exclude-re semantics).
+EXCLUDE_RE="(^|/)(tests|benches|examples)/|_template|desktop-tauri|schemas/generated|Scanner<'a>::advance_char|Scanner<'a>::truncated_at_eof"
 
-TIMEOUT="${MUTANTS_TIMEOUT:-1800}"
+# 90s per mutant, not 1800s (audit run 44582085806): a hang-class mutant
+# (loop-bound / counter mutation in a parser or serve loop) must cost 90s
+# of one worker, not 30 min - slice 6 burned 2.5h of worker time on five
+# 1800s timeouts (hls serve/fetch loops) before dying. It also cuts off the
+# balloon subclass before 4 pinned workers can cross the 16GB runner
+# ceiling. Legit per-mutant test times across every shard log so far are
+# <= 11s, so 90s is 8x headroom; if a baseline ever exceeds it the failure
+# is loud (baseline TIMEOUT) and this cap gets raised deliberately.
+TIMEOUT="${MUTANTS_TIMEOUT:-90}"
 JOBS="${MUTANTS_JOBS:-8}"
 # The wall budget for one shard (GNU timeout, minutes). A FULL sweep is
 # ~20-30 h per shard on a 4-core runner (per-mutant = incremental build +
